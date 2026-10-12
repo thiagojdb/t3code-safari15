@@ -55,6 +55,24 @@ index 9a3d4a03b..e8d160cb7 100644
 +  .then(() => import("./main"))
 +  .then(({ startup }) => startup)
 +  .catch(showBootError);
+diff --git a/apps/web/src/components/chat/composerPromptHistory.ts b/apps/web/src/components/chat/composerPromptHistory.ts
+index 0977637cd..70c4498f1 100644
+--- a/apps/web/src/components/chat/composerPromptHistory.ts
++++ b/apps/web/src/components/chat/composerPromptHistory.ts
+@@ -95,9 +95,10 @@ function stripInlineTerminalLabels(prompt: string, headers: ReadonlyArray<string
+     const label = `@${match[1]!.trim().toLowerCase().replace(/\s+/g, "-")}:${match[2]}`;
+     // Whole label only: `@terminal-1:4` must not match inside `@terminal-1:40`
+     // or `@terminal-1:4-12`.
+-    const labelPattern = new RegExp(`(?<![\\w@.-])${escapeRegExp(label)}(?![\\d-])`);
+-    const index = result.search(labelPattern);
+-    if (index < 0) continue;
++    const labelPattern = new RegExp(`(^|[^\\w@.-])(${escapeRegExp(label)})(?![\\d-])`);
++    const labelMatch = labelPattern.exec(result);
++    if (!labelMatch) continue;
++    const index = labelMatch.index + labelMatch[1]!.length;
+     let end = index + label.length;
+     let start = index;
+     if (result[end] === " ") end += 1;
 diff --git a/apps/web/src/components/settings/ConnectionsSettings.tsx b/apps/web/src/components/settings/ConnectionsSettings.tsx
 index 443ac6e02..49bef727e 100644
 --- a/apps/web/src/components/settings/ConnectionsSettings.tsx
@@ -420,6 +438,40 @@ index 000000000..983c4e554
 +  visit(parsed.nodes);
 +  return parsed.toString();
 +}
+diff --git a/apps/web/src/lib/legacyRegex.test.ts b/apps/web/src/lib/legacyRegex.test.ts
+new file mode 100644
+index 000000000..a6dc27230
+--- /dev/null
++++ b/apps/web/src/lib/legacyRegex.test.ts
+@@ -0,0 +1,28 @@
++import * as NodeFS from "node:fs";
++import * as NodeModule from "node:module";
++import * as NodePath from "node:path";
++import { expect, it } from "vite-plus/test";
++import { legacyRegexSource } from "../../vite/legacyRegex";
++
++const require = NodeModule.createRequire(import.meta.url);
++
++it("removes the actual Markdown startup dependency's unsupported lookbehind", () => {
++  const path = NodePath.join(
++    NodePath.dirname(require.resolve("mdast-util-gfm-autolink-literal")),
++    "lib/index.js",
++  );
++  const source = NodeFS.readFileSync(path, "utf8");
++  expect(source).toContain("(?<=");
++  const compatible = legacyRegexSource(source, path);
++  expect(compatible).not.toContain("(?<=");
++});
++
++it("splits actual diff contents with line endings without lookbehind", () => {
++  const source = String.raw`const SPLIT_WITH_NEWLINES = /(?<=\n)/;`;
++  const compatible = legacyRegexSource(source, "/@pierre/diffs/dist/constants.js");
++  expect(compatible).not.toContain("(?<=");
++  const splitter = new Function(`${compatible}; return SPLIT_WITH_NEWLINES;`)();
++  for (const input of ["a\nb\n", "a\nb", "\n\n", "a\r\nb\r\n", ""]) {
++    expect(input.split(splitter)).toEqual(input === "" ? [] : input.split(/(?<=\n)/));
++  }
++});
 diff --git a/apps/web/src/router.ts b/apps/web/src/router.ts
 index 4362dd3d7..0f05f2e97 100644
 --- a/apps/web/src/router.ts
@@ -482,14 +534,15 @@ index 31260c8ae..0846d02f7 100644
    readonly VITE_WS_URL: string;
    readonly VITE_HOSTED_APP_URL: string;
 diff --git a/apps/web/vite.config.ts b/apps/web/vite.config.ts
-index cf343e26a..6df1ca203 100644
+index cf343e26a..e2e8a57c6 100644
 --- a/apps/web/vite.config.ts
 +++ b/apps/web/vite.config.ts
-@@ -17,9 +17,11 @@ import {
+@@ -17,9 +17,12 @@ import {
  import { loadRepoEnv } from "../../scripts/lib/public-config";
  import { thirdPartyLicensesPlugin } from "../../scripts/lib/third-party-licenses";
  import { tailwindPlugins } from "./vite/tailwind";
 +import { legacyCssPlugin } from "./vite/legacyCss";
++import { legacyRegexPlugin } from "./vite/legacyRegex";
  
  const repoEnv = loadRepoEnv();
  Object.assign(process.env, repoEnv);
@@ -497,15 +550,15 @@ index cf343e26a..6df1ca203 100644
  
  // Single-origin dev is signalled positively, because it cannot be inferred
  // from the absence of VITE_HTTP_URL/VITE_WS_URL: the runner deletes those keys
-@@ -184,6 +186,7 @@ export default defineConfig(() => {
+@@ -184,6 +187,7 @@ export default defineConfig(() => {
          presets: [reactCompilerPreset()],
        }),
        tailwindPlugins(bundledDev),
-+      ...(legacyBrowser ? [legacyCssPlugin()] : []),
++      ...(legacyBrowser ? [legacyRegexPlugin(), legacyCssPlugin()] : []),
      ],
      optimizeDeps: {
        include: [
-@@ -199,6 +202,7 @@ export default defineConfig(() => {
+@@ -199,6 +203,7 @@ export default defineConfig(() => {
        ],
      },
      define: {
@@ -513,7 +566,15 @@ index cf343e26a..6df1ca203 100644
        // In dev mode, tell the web app where the WebSocket server lives
        "import.meta.env.VITE_WS_URL": JSON.stringify(configuredWsUrl ?? ""),
        // Pinned explicitly rather than left to Vite's automatic VITE_ exposure:
-@@ -281,6 +285,7 @@ export default defineConfig(() => {
+@@ -227,6 +232,7 @@ export default defineConfig(() => {
+     experimental: {
+       bundledDev,
+     },
++    worker: { plugins: () => (legacyBrowser ? [legacyRegexPlugin()] : []) },
+     server: {
+       host,
+       port,
+@@ -281,6 +287,7 @@ export default defineConfig(() => {
        devSourcemap: buildSourcemap !== false,
      },
      build: {
@@ -603,6 +664,59 @@ index 000000000..8061a4310
 +    },
 +  };
 +}
+diff --git a/apps/web/vite/legacyRegex.ts b/apps/web/vite/legacyRegex.ts
+new file mode 100644
+index 000000000..bc3e3c4d2
+--- /dev/null
++++ b/apps/web/vite/legacyRegex.ts
+@@ -0,0 +1,26 @@
++import type { Plugin } from "vite-plus";
++
++export function legacyRegexSource(code: string, id: string): string {
++  if (id.includes("mdast-util-gfm-autolink-literal")) {
++    // findEmail already validates the preceding character through previous(match, true).
++    return code.replace(String.raw`(?<=^|\s|\p{P}|\p{S})`, "");
++  }
++  if (id.includes("@pierre/diffs") && id.endsWith("/constants.js")) {
++    return code.replace(
++      String.raw`const SPLIT_WITH_NEWLINES = /(?<=\n)/;`,
++      String.raw`const SPLIT_WITH_NEWLINES = { [Symbol.split](text) { return text.match(/[^\n]*\n|[^\n]+$/g) || []; } };`,
++    );
++  }
++  return code;
++}
++
++export function legacyRegexPlugin(): Plugin {
++  return {
++    name: "t3code:safari15-regex",
++    enforce: "pre",
++    transform(code, id) {
++      const result = legacyRegexSource(code, id);
++      return result !== code ? result : undefined;
++    },
++  };
++}
+diff --git a/packages/shared/src/githubMarkdownLinks.ts b/packages/shared/src/githubMarkdownLinks.ts
+index 4fb315021..3191c851a 100644
+--- a/packages/shared/src/githubMarkdownLinks.ts
++++ b/packages/shared/src/githubMarkdownLinks.ts
+@@ -15,7 +15,7 @@ type MarkdownNode = {
+ 
+ const parser = unified().use(remarkParse).use(remarkGfm);
+ const reference =
+-  /(?<![\w/\\])(?:([\w.-]+\/[\w.-]+|[\w-]+)?#([1-9]\d*)|(?:([\w.-]+\/[\w.-]+|[\w-]+)@)?([a-f\d]{7,40})(?![\w])|@([a-z\d](?:[a-z\d-]*[a-z\d])?(?:\/[a-z\d][a-z\d-]*)?))(?![\w])/gi;
++  /(?:([\w.-]+\/[\w.-]+|[\w-]+)?#([1-9]\d*)|(?:([\w.-]+\/[\w.-]+|[\w-]+)@)?([a-f\d]{7,40})(?![\w])|@([a-z\d](?:[a-z\d-]*[a-z\d])?(?:\/[a-z\d][a-z\d-]*)?))(?![\w])/gi;
+ 
+ /** Link GitHub references in prose without rewriting code, URLs, HTML, or existing links. */
+ export function githubMarkdownLinks(markdown: string, pullRequestUrl: string | null): string {
+@@ -53,6 +53,7 @@ export function githubMarkdownLinks(markdown: string, pullRequestUrl: string | n
+       const source = markdown.slice(start, end);
+       for (const match of source.matchAll(reference)) {
+         const [label, issueRepo, number, commitRepo, sha, mention] = match;
++        if (match.index > 0 && /[\w/\\]/.test(source[match.index - 1]!)) continue;
+         if (sha && !/[a-f]/i.test(sha)) continue;
+         const path = number
+           ? `${repository(issueRepo)}/issues/${number}`
 diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
 index fdb699e66..0e4626f71 100644
 --- a/pnpm-lock.yaml
