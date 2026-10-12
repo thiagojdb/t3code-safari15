@@ -636,10 +636,10 @@ index cf343e26a..e2e8a57c6 100644
        manifest: true,
 diff --git a/apps/web/vite/legacyCss.ts b/apps/web/vite/legacyCss.ts
 new file mode 100644
-index 000000000..be88e4a3e
+index 000000000..9a36716f8
 --- /dev/null
 +++ b/apps/web/vite/legacyCss.ts
-@@ -0,0 +1,83 @@
+@@ -0,0 +1,84 @@
 +import postcss from "postcss";
 +import { transform, Features } from "lightningcss";
 +import type { Plugin } from "vite-plus";
@@ -676,6 +676,7 @@ index 000000000..be88e4a3e
 +    layer.append(rule);
 +    root.prepend(layer);
 +  }
++  root.append(postcss.parse("@media (max-width: 767px) {\n  :root { --workspace-controls-top: env(safe-area-inset-top, 0px); }\n  [data-chat-header] {\n    display: flex;\n    align-items: center;\n    height: var(--workspace-topbar-height);\n    min-height: var(--workspace-topbar-height);\n    flex-shrink: 0;\n    padding-left: calc(env(safe-area-inset-left, 0px) + 3.5rem) !important;\n    padding-right: calc(env(safe-area-inset-right, 0px) + 7.5rem) !important;\n  }\n  [data-chat-header] > :not([data-workspace-titlebar-controls]) { min-width: 0; }\n  [data-sidebar-control], [data-workspace-titlebar-controls] {\n    top: env(safe-area-inset-top, 0px) !important;\n    height: var(--workspace-topbar-height);\n    align-items: center;\n  }\n}\n"));
 +  const result = transform({
 +    filename: "legacy.css",
 +    code: Buffer.from(root.toString()),
