@@ -1,0 +1,1 @@
+import{o as e}from"./legacyColor-C5BGferB.js";import{t}from"./createLucideIcon-BjayOM_Y.js";var n=e({__iconNode:()=>r,default:()=>i}),r=[[`path`,{d:`M21 12a9 9 0 1 1-6.219-8.56`,key:`13zald`}]],i=t(`loader-circle`,r);export{n,i as t};

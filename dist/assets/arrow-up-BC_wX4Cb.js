@@ -1,0 +1,1 @@
+import{o as e}from"./legacyColor-C5BGferB.js";import{t}from"./createLucideIcon-BjayOM_Y.js";var n=e({__iconNode:()=>r,default:()=>i}),r=[[`path`,{d:`m5 12 7-7 7 7`,key:`hav0vg`}],[`path`,{d:`M12 19V5`,key:`x0mq9r`}]],i=t(`arrow-up`,r);export{n,i as t};

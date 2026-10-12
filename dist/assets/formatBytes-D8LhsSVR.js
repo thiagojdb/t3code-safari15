@@ -1,0 +1,1 @@
+function e(e){if(e<1024)return`${Math.round(e)} B`;let t=[`KB`,`MB`,`GB`,`TB`],n=e,r=-1;do n/=1024,r+=1;while(n>=1024&&r<t.length-1);return`${n.toFixed(n>=100?0:n>=10?1:2)} ${t[r]}`}export{e as t};

@@ -1,0 +1,1 @@
+import{o as e}from"./legacyColor-C5BGferB.js";import{t}from"./createLucideIcon-BjayOM_Y.js";var n=e({__iconNode:()=>r,default:()=>i}),r=[[`circle`,{cx:`12`,cy:`12`,r:`10`,key:`1mglay`}],[`line`,{x1:`12`,x2:`12`,y1:`8`,y2:`12`,key:`1pkeuh`}],[`line`,{x1:`12`,x2:`12.01`,y1:`16`,y2:`16`,key:`4dfq90`}]],i=t(`circle-alert`,r);export{n,i as t};

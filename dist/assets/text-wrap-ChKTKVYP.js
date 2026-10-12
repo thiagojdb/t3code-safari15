@@ -1,0 +1,1 @@
+import{o as e}from"./legacyColor-C5BGferB.js";import{t}from"./createLucideIcon-BjayOM_Y.js";var n=e({__iconNode:()=>r,default:()=>i}),r=[[`path`,{d:`m16 16-3 3 3 3`,key:`117b85`}],[`path`,{d:`M3 12h14.5a1 1 0 0 1 0 7H13`,key:`18xa6z`}],[`path`,{d:`M3 19h6`,key:`1ygdsz`}],[`path`,{d:`M3 5h18`,key:`1u36vt`}]],i=t(`text-wrap`,r);export{n,i as t};

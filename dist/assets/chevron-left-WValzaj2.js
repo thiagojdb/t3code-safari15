@@ -1,0 +1,1 @@
+import{o as e}from"./legacyColor-C5BGferB.js";import{t}from"./createLucideIcon-BjayOM_Y.js";var n=e({__iconNode:()=>r,default:()=>i}),r=[[`path`,{d:`m15 18-6-6 6-6`,key:`1wnfg3`}]],i=t(`chevron-left`,r);export{n,i as t};

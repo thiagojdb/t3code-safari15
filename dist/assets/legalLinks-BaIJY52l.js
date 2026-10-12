@@ -1,0 +1,1 @@
+var e=`https://t3.codes/privacy-policy`;export{e as t};

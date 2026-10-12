@@ -1,0 +1,1 @@
+import{o as e}from"./legacyColor-C5BGferB.js";import{t}from"./createLucideIcon-BjayOM_Y.js";var n=e({__iconNode:()=>r,default:()=>i}),r=[[`path`,{d:`m6 9 6 6 6-6`,key:`qrunsl`}]],i=t(`chevron-down`,r);export{n,i as t};

@@ -1,0 +1,1 @@
+import{Qn as e,Sx as t}from"./utils-C04APqPL.js";import{i as n}from"./dist-Cd2uI3js.js";import{t as r}from"./authRedirect-DWE5a_T9.js";var i=t();function a(){let t=(0,i.c)(2),a=n(),o;return t[0]===a?o=t[1]:(o={authPrompt:null,openAuthPrompt:()=>{a.openSignIn(r(window.location.href,e))}},t[0]=a,t[1]=o),o}export{a as t};

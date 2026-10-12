@@ -1,0 +1,1 @@
+import{c as e}from"./legacyColor-C5BGferB.js";import{r as t}from"./Icon-QjMt6TC9.js";import{bo as n}from"./utils-C04APqPL.js";var r=e(t()),i=r.createContext({formRef:{current:{fields:new Map}},errors:{},clearErrors:n,validationMode:`onSubmit`,submitAttemptedRef:{current:!1}});function a(){return r.useContext(i)}export{a as t};

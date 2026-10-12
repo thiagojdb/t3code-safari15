@@ -1,0 +1,808 @@
+diff --git a/apps/web/package.json b/apps/web/package.json
+index b4ef7684a..7f485d5ba 100644
+--- a/apps/web/package.json
++++ b/apps/web/package.json
+@@ -51,6 +51,8 @@
+     "@tiptap/react": "^3.31.3",
+     "@tiptap/starter-kit": "^3.31.3",
+     "class-variance-authority": "^0.7.1",
++    "construct-style-sheets-polyfill": "3.1.0",
++    "core-js": "3.49.0",
+     "culori": "^4.0.2",
+     "dompurify": "^3.4.16",
+     "effect": "catalog:",
+@@ -90,6 +92,9 @@
+     "babel-plugin-react-compiler": "1.0.0",
+     "compression": "^1.8.2",
+     "jsdom": "^30.0.1",
++    "lightningcss": "catalog:",
++    "postcss": "8.5.28",
++    "postcss-value-parser": "4.2.0",
+     "react-test-renderer": "19.2.6",
+     "tailwindcss": "^4.0.0",
+     "unified": "catalog:",
+diff --git a/apps/web/src/bootstrap.test.ts b/apps/web/src/bootstrap.test.ts
+index c5c0d8959..284176a2a 100644
+--- a/apps/web/src/bootstrap.test.ts
++++ b/apps/web/src/bootstrap.test.ts
+@@ -90,4 +90,11 @@ describe("app startup failures", () => {
+ 
+     expect(createElement).not.toHaveBeenCalled();
+   });
++
++  it("shows diagnostic details in the legacy production build", () => {
++    vi.stubEnv("DEV", false);
++    vi.stubEnv("VITE_LEGACY_BROWSER", "1");
++    showBootError(new Error("Missing browser API"));
++    expect(bootShell?.text).toContain("Missing browser API");
++  });
+ });
+diff --git a/apps/web/src/bootstrap.ts b/apps/web/src/bootstrap.ts
+index 9a3d4a03b..e8d160cb7 100644
+--- a/apps/web/src/bootstrap.ts
++++ b/apps/web/src/bootstrap.ts
+@@ -2,4 +2,12 @@ import { showBootError } from "./lib/bootError";
+ 
+ // Bundled dev can move UI code into shared chunks. Load it only after this
+ // entry runs the React refresh preamble, and catch failures before React mounts.
+-void import("./main").then(({ startup }) => startup).catch(showBootError);
++const compatibility =
++  import.meta.env.VITE_LEGACY_BROWSER === "1"
++    ? import("./legacyBrowser").then(({ prepareLegacyBrowser }) => prepareLegacyBrowser())
++    : Promise.resolve();
++
++void compatibility
++  .then(() => import("./main"))
++  .then(({ startup }) => startup)
++  .catch(showBootError);
+diff --git a/apps/web/src/components/settings/ConnectionsSettings.tsx b/apps/web/src/components/settings/ConnectionsSettings.tsx
+index 443ac6e02..49bef727e 100644
+--- a/apps/web/src/components/settings/ConnectionsSettings.tsx
++++ b/apps/web/src/components/settings/ConnectionsSettings.tsx
+@@ -139,7 +139,7 @@ import { AnimatedHeight } from "../AnimatedHeight";
+ import { EnvironmentMachineIcon } from "../EnvironmentMachineIcon";
+ import { Textarea } from "../ui/textarea";
+ import { getPairingTokenFromUrl, setPairingTokenOnUrl } from "../../pairingUrl";
+-import { readHostedPairingRequest } from "../../hostedPairing";
++import { configuredHostedAppUrl, readHostedPairingRequest } from "../../hostedPairing";
+ import {
+   createServerPairingCredential,
+   revokeOtherServerClientSessions,
+@@ -524,14 +524,14 @@ function resolveAdvertisedEndpointPairingUrl(
+ }
+ 
+ function resolveCurrentOriginPairingUrl(credential: string): string {
+-  const url = new URL("/pair", window.location.href);
++  const url = new URL("pair", configuredHostedAppUrl().replace(/\/?$/, "/"));
+   return setPairingTokenOnUrl(url, credential).toString();
+ }
+ 
+ function isHostedAppPairingUrl(value: string): boolean {
+   try {
+     const url = new URL(value);
+-    return url.pathname === "/pair" && url.searchParams.has("host");
++    return url.pathname.endsWith("/pair") && url.searchParams.has("host");
+   } catch {
+     return false;
+   }
+diff --git a/apps/web/src/environments/primary/auth.ts b/apps/web/src/environments/primary/auth.ts
+index 305bca3e4..d11e75f94 100644
+--- a/apps/web/src/environments/primary/auth.ts
++++ b/apps/web/src/environments/primary/auth.ts
+@@ -21,6 +21,7 @@ import {
+ 
+ import { PrimaryEnvironmentHttpClient } from "./httpClient";
+ import { runPrimaryHttp } from "../../lib/runtime";
++import { stripAppBasePath } from "../../lib/appBasePath";
+ 
+ const PrimaryEnvironmentRequestOperation = Schema.Literals([
+   "fetch-session-state",
+@@ -434,7 +435,7 @@ export async function resolveInitialServerAuthGateState(): Promise<ServerAuthGat
+   // An explicit pairing link replaces this browser's grant, even when the
+   // current cookie or a cached gate already authenticates it. Keep that intent
+   // after stripping the token, which causes the router to load this gate again.
+-  if (window.location.pathname.replace(/\/+$/, "") !== "/pair") {
++  if (stripAppBasePath(window.location.pathname).replace(/\/+$/, "") !== "/pair") {
+     explicitPairingRequested = false;
+   } else if (peekPairingTokenFromUrl()) {
+     explicitPairingRequested = true;
+diff --git a/apps/web/src/hooks/useTheme.ts b/apps/web/src/hooks/useTheme.ts
+index 7a750fd74..0ee380200 100644
+--- a/apps/web/src/hooks/useTheme.ts
++++ b/apps/web/src/hooks/useTheme.ts
+@@ -2,6 +2,7 @@ import type { DesktopBridge } from "@t3tools/contracts";
+ import { safeErrorLogAttributes } from "@t3tools/client-runtime/errors";
+ import * as Schema from "effect/Schema";
+ import { useCallback, useEffect, useSyncExternalStore } from "react";
++import { browserThemeColor } from "../lib/legacyColor";
+ import {
+   applyThemePalette,
+   CUSTOM_THEMES_STORAGE_KEY,
+@@ -301,8 +302,9 @@ export function syncBrowserChromeTheme() {
+     getComputedStyle(resolveBrowserChromeSurface()).backgroundColor,
+   );
+   const fallbackColor = normalizeThemeColor(getComputedStyle(document.body).backgroundColor);
+-  const backgroundColor = themeChromeColor ?? surfaceColor ?? fallbackColor;
+-  if (!backgroundColor) return;
++  const selectedColor = themeChromeColor ?? surfaceColor ?? fallbackColor;
++  if (!selectedColor) return;
++  const backgroundColor = browserThemeColor(selectedColor);
+ 
+   document.documentElement.style.backgroundColor = backgroundColor;
+   document.body.style.backgroundColor = backgroundColor;
+diff --git a/apps/web/src/hostedPairing.ts b/apps/web/src/hostedPairing.ts
+index 00fcae959..7620f7867 100644
+--- a/apps/web/src/hostedPairing.ts
++++ b/apps/web/src/hostedPairing.ts
+@@ -1,6 +1,7 @@
+ import { DEFAULT_HOSTED_APP_URL } from "@t3tools/shared/connectAuth";
+ 
+ import { getPairingTokenFromUrl, setPairingTokenOnUrl } from "./pairingUrl";
++import { appPath, appBasePath } from "./lib/appBasePath";
+ 
+ export interface HostedPairingRequest {
+   readonly host: string;
+@@ -12,6 +13,9 @@ export type HostedAppChannel = "latest" | "nightly";
+ 
+ /** The hosted app origin shared links point at. */
+ export function configuredHostedAppUrl(): string {
++  if (import.meta.env.BASE_URL === "./" && typeof window !== "undefined") {
++    return new URL(`${appBasePath}/`, window.location.origin).toString();
++  }
+   return import.meta.env.VITE_HOSTED_APP_URL?.trim() || DEFAULT_HOSTED_APP_URL;
+ }
+ 
+@@ -76,7 +80,10 @@ export function buildHostedPairingUrl(input: {
+   readonly token: string;
+   readonly label?: string | null;
+ }): string {
+-  const url = new URL("/pair", configuredHostedAppUrl());
++  const url = new URL(
++    import.meta.env.BASE_URL === "./" ? appPath("pair") : "/pair",
++    configuredHostedAppUrl(),
++  );
+   url.searchParams.set("host", input.host);
+ 
+   const label = input.label?.trim();
+diff --git a/apps/web/src/index.css b/apps/web/src/index.css
+index 90f204d20..ce6faef1c 100644
+--- a/apps/web/src/index.css
++++ b/apps/web/src/index.css
+@@ -87,6 +87,8 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
+ }
+ 
+ :root {
++  --legacy-light: initial;
++  --legacy-dark: ;
+   --app-scrollbar-width: 6px;
+   --appearance-contrast-base: 100%;
+   --appearance-contrast-boost: 0%;
+@@ -148,6 +150,11 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
+   }
+ }
+ 
++.dark {
++  --legacy-light: ;
++  --legacy-dark: initial;
++}
++
+ .wco {
+   --workspace-topbar-height: max(40px, env(titlebar-area-height, 52px));
+   --workspace-controls-top: env(titlebar-area-y, 0px);
+diff --git a/apps/web/src/legacyBrowser.test.ts b/apps/web/src/legacyBrowser.test.ts
+new file mode 100644
+index 000000000..631a89a43
+--- /dev/null
++++ b/apps/web/src/legacyBrowser.test.ts
+@@ -0,0 +1,31 @@
++// @vitest-environment jsdom
++import { afterEach, expect, it, vi } from "vite-plus/test";
++
++const sortedDescriptor = Object.getOwnPropertyDescriptor(Array.prototype, "toSorted")!;
++
++afterEach(() => {
++  Reflect.defineProperty(Array.prototype, "toSorted", sortedDescriptor);
++  vi.unstubAllGlobals();
++});
++
++it("restores missing array methods and adopts a diff stylesheet before app startup", async () => {
++  Reflect.deleteProperty(Array.prototype, "toSorted");
++  vi.stubGlobal("CSS", { supports: () => false });
++  document.documentElement.style.setProperty("--boot-background", "oklch(1 0 0)");
++  expect(() => [2, 1].toSorted()).toThrow();
++
++  const { prepareLegacyBrowser } = await import("./legacyBrowser");
++  await prepareLegacyBrowser();
++
++  expect([2, 1].toSorted()).toEqual([1, 2]);
++  expect(document.documentElement.style.getPropertyValue("--boot-background")).toBe(
++    "rgb(255, 255, 255)",
++  );
++  const sheet = new CSSStyleSheet();
++  sheet.replaceSync(":host { color: oklch(0 0 0); }");
++  const host = document.createElement("div");
++  document.body.append(host);
++  const shadow = host.attachShadow({ mode: "open" });
++  shadow.adoptedStyleSheets = [sheet];
++  expect(shadow.adoptedStyleSheets).toEqual([sheet]);
++});
+diff --git a/apps/web/src/legacyBrowser.ts b/apps/web/src/legacyBrowser.ts
+new file mode 100644
+index 000000000..99891c2f3
+--- /dev/null
++++ b/apps/web/src/legacyBrowser.ts
+@@ -0,0 +1,24 @@
++import "core-js/actual";
++
++import { browserThemeColor } from "./lib/legacyColor";
++import { legacyCssValue } from "./lib/legacyCssValue";
++
++// Await this before importing React or any dependency that uses the missing APIs.
++export async function prepareLegacyBrowser(): Promise<void> {
++  if (typeof document === "undefined" || !document.implementation) return;
++  if (!("adoptedStyleSheets" in document)) {
++    await import("construct-style-sheets-polyfill");
++    const replaceSync = CSSStyleSheet.prototype.replaceSync;
++    CSSStyleSheet.prototype.replaceSync = function (css: string) {
++      return replaceSync.call(this, legacyCssValue(css));
++    };
++  }
++
++  // index.html paints the theme before the module entry; repair its literal colours too.
++  const root = document.documentElement;
++  for (const name of Array.from(root.style)) {
++    const value = root.style.getPropertyValue(name);
++    const supported = browserThemeColor(value);
++    if (supported !== value) root.style.setProperty(name, supported);
++  }
++}
+diff --git a/apps/web/src/lib/appBasePath.test.ts b/apps/web/src/lib/appBasePath.test.ts
+new file mode 100644
+index 000000000..799f51219
+--- /dev/null
++++ b/apps/web/src/lib/appBasePath.test.ts
+@@ -0,0 +1,17 @@
++import { describe, expect, it } from "vite-plus/test";
++import { resolveAppBasePath } from "./appBasePath";
++
++describe("published frontend base path", () => {
++  it("derives the publication path from a built chunk, even on a deep route", () => {
++    expect(resolveAppBasePath("./", "https://docs.example/p/abc/app/assets/index.js")).toBe(
++      "/p/abc/app",
++    );
++  });
++
++  it("preserves root-hosted and explicitly configured bases", () => {
++    expect(resolveAppBasePath("/", "https://example.com/assets/index.js")).toBe("/");
++    expect(resolveAppBasePath("/client/", "https://example.com/client/assets/index.js")).toBe(
++      "/client",
++    );
++  });
++});
+diff --git a/apps/web/src/lib/appBasePath.ts b/apps/web/src/lib/appBasePath.ts
+new file mode 100644
+index 000000000..8baa8d82f
+--- /dev/null
++++ b/apps/web/src/lib/appBasePath.ts
+@@ -0,0 +1,17 @@
++/** Relative builds can be served below a publication path without knowing its ID at build time. */
++export function resolveAppBasePath(base: string, moduleUrl: string): string {
++  const path = base === "./" ? new URL("../", moduleUrl).pathname : base;
++  return path.replace(/\/$/, "") || "/";
++}
++
++export const appBasePath = resolveAppBasePath(import.meta.env.BASE_URL, import.meta.url);
++
++export function appPath(path: string): string {
++  return `${appBasePath === "/" ? "" : appBasePath}/${path.replace(/^\//, "")}`;
++}
++
++export function stripAppBasePath(path: string): string {
++  return appBasePath !== "/" && path.startsWith(`${appBasePath}/`)
++    ? path.slice(appBasePath.length)
++    : path;
++}
+diff --git a/apps/web/src/lib/bootError.ts b/apps/web/src/lib/bootError.ts
+index 697c8e9d8..41d669128 100644
+--- a/apps/web/src/lib/bootError.ts
++++ b/apps/web/src/lib/bootError.ts
+@@ -12,7 +12,10 @@ export function showBootError(error: unknown) {
+   message.textContent = "T3 Code could not load.";
+   content.append(message);
+ 
+-  if (import.meta.env.DEV && error instanceof Error) {
++  if (
++    (import.meta.env.DEV || import.meta.env.VITE_LEGACY_BROWSER === "1") &&
++    error instanceof Error
++  ) {
+     const detail = document.createElement("p");
+     detail.textContent = error.message;
+     content.append(detail);
+diff --git a/apps/web/src/lib/legacyColor.ts b/apps/web/src/lib/legacyColor.ts
+new file mode 100644
+index 000000000..7b092486d
+--- /dev/null
++++ b/apps/web/src/lib/legacyColor.ts
+@@ -0,0 +1,9 @@
++import "culori/css";
++import { formatRgb, parse } from "culori/fn";
++
++/** Stored palettes remain canonical; only values sent to old browser CSS are converted. */
++export function browserThemeColor(value: string): string {
++  if (typeof CSS === "undefined" || CSS.supports("color", "oklch(0.5 0 0)")) return value;
++  const color = parse(value);
++  return color ? formatRgb(color) : value;
++}
+diff --git a/apps/web/src/lib/legacyCss.test.ts b/apps/web/src/lib/legacyCss.test.ts
+new file mode 100644
+index 000000000..ccc84e383
+--- /dev/null
++++ b/apps/web/src/lib/legacyCss.test.ts
+@@ -0,0 +1,30 @@
++import { describe, expect, it } from "vite-plus/test";
++
++import { legacyCss } from "../../vite/legacyCss";
++import { legacyCssValue } from "./legacyCssValue";
++
++describe("Safari 15 CSS output", () => {
++  it("converts palette literals while preserving variable references and gradients", () => {
++    const css = legacyCss(`:root { --background: oklch(1 0 0); }
++      .panel { background: linear-gradient(oklch(0 0 0), color-mix(in oklab, var(--background) calc(80% + 1%), transparent)); }`);
++    expect(css).not.toContain("oklch(");
++    expect(css).not.toContain("color-mix(");
++    expect(css).toContain("--background: #fff");
++    expect(css).toContain("linear-gradient(#000, var(--background))");
++  });
++
++  it("flattens shadow-root nesting and initializes properties without CSS registration", () => {
++    const css =
++      legacyCss(`@property --tw-shadow { syntax: "*"; inherits: false; initial-value: 0 0 #0000; }
++      .diff { & .line { color: red; } }`);
++    expect(css).not.toContain("@property");
++    expect(css).toContain("--tw-shadow: 0 0 #0000");
++    expect(css).toContain(".diff .line");
++  });
++
++  it("keeps both theme choices available without light-dark support", () => {
++    expect(legacyCssValue("light-dark(#fff, #000)")).toBe(
++      "var(--legacy-light, #fff) var(--legacy-dark, #000)",
++    );
++  });
++});
+diff --git a/apps/web/src/lib/legacyCssValue.ts b/apps/web/src/lib/legacyCssValue.ts
+new file mode 100644
+index 000000000..983c4e554
+--- /dev/null
++++ b/apps/web/src/lib/legacyCssValue.ts
+@@ -0,0 +1,45 @@
++import "culori/css";
++import { formatRgb, parse } from "culori/fn";
++import valueParser from "postcss-value-parser";
++
++/** Safari 15 gets solid colours in place of unsupported variable-based colour mixing. */
++export function legacyCssValue(value: string): string {
++  const parsed = valueParser(value);
++  const visit = (nodes: valueParser.Node[]) => {
++    for (const node of nodes) {
++      if (node.type !== "function") continue;
++      visit(node.nodes);
++      if (["oklch", "oklab", "lab", "lch", "color"].includes(node.value)) {
++        const color = parse(valueParser.stringify(node));
++        if (color) {
++          Object.assign(node, { type: "word", value: formatRgb(color) });
++        }
++      } else if (node.value === "color-mix" || node.value === "light-dark") {
++        const args: valueParser.Node[][] = [[]];
++        for (const child of node.nodes) {
++          if (child.type === "div" && child.value === ",") args.push([]);
++          else args[args.length - 1]!.push(child);
++        }
++        if (node.value === "light-dark") {
++          const light = valueParser.stringify(args[0] ?? []).trim();
++          const dark = valueParser.stringify(args[1] ?? []).trim();
++          Object.assign(node, {
++            type: "word",
++            value: `var(--legacy-light, ${light}) var(--legacy-dark, ${dark})`,
++          });
++          continue;
++        }
++        const color = args[1];
++        if (color) {
++          const expression = color.find(
++            (child) => child.type !== "space" && child.type !== "comment",
++          );
++          const fallback = expression ? valueParser.stringify(expression) : "transparent";
++          Object.assign(node, { type: "word", value: fallback });
++        }
++      }
++    }
++  };
++  visit(parsed.nodes);
++  return parsed.toString();
++}
+diff --git a/apps/web/src/router.ts b/apps/web/src/router.ts
+index 4362dd3d7..0f05f2e97 100644
+--- a/apps/web/src/router.ts
++++ b/apps/web/src/router.ts
+@@ -1,11 +1,13 @@
+ import { createRouter, RouterHistory } from "@tanstack/react-router";
+ 
+ import { routeTree } from "./routeTree.gen";
++import { appBasePath } from "./lib/appBasePath";
+ 
+ export function getRouter(history: RouterHistory) {
+   return createRouter({
+     routeTree,
+     history,
++    basepath: appBasePath,
+     context: {},
+     // Route components are split chunks (autoCodeSplitting in vite.config);
+     // fetching them on hover/focus intent hides the load from the first
+diff --git a/apps/web/src/themePalette.ts b/apps/web/src/themePalette.ts
+index da9af454c..1226c0098 100644
+--- a/apps/web/src/themePalette.ts
++++ b/apps/web/src/themePalette.ts
+@@ -2,6 +2,7 @@ import * as Equal from "effect/Equal";
+ import * as Schema from "effect/Schema";
+ import "culori/css";
+ import { converter, parse } from "culori/fn";
++import { browserThemeColor } from "./lib/legacyColor";
+ import {
+   BUILT_IN_THEMES,
+   EMBER_THEME,
+@@ -1533,7 +1534,8 @@ export function applyThemeColorPreview(colors: ThemeColors, appearance: ThemeApp
+   root.classList.toggle("dark", appearance === "dark");
+   for (const [role, value] of Object.entries(colors) as Array<[ThemeColorRole, string]>) {
+     // A half-typed hex keeps the last good value instead of blanking the role.
+-    if (isThemeColor(value)) root.style.setProperty(APP_THEME_VARIABLES[role], value);
++    if (isThemeColor(value))
++      root.style.setProperty(APP_THEME_VARIABLES[role], browserThemeColor(value));
+   }
+ }
+ 
+@@ -1551,7 +1553,7 @@ export function applyThemePalette(theme: ThemePreference, appearance?: ThemeAppe
+     const mode = appearance ?? legacyThemeMode(theme) ?? palette.appearance;
+     const colors = getThemeColorsForMode(palette, mode) ?? palette.colors;
+     for (const [role, value] of Object.entries(colors) as Array<[ThemeColorRole, string]>) {
+-      root.style.setProperty(APP_THEME_VARIABLES[role], value);
++      root.style.setProperty(APP_THEME_VARIABLES[role], browserThemeColor(value));
+     }
+     return;
+   }
+diff --git a/apps/web/src/vite-env.d.ts b/apps/web/src/vite-env.d.ts
+index 31260c8ae..0846d02f7 100644
+--- a/apps/web/src/vite-env.d.ts
++++ b/apps/web/src/vite-env.d.ts
+@@ -3,6 +3,7 @@
+ import type { DesktopBridge } from "@t3tools/contracts";
+ 
+ interface ImportMetaEnv {
++  readonly VITE_LEGACY_BROWSER: string;
+   readonly VITE_HTTP_URL: string;
+   readonly VITE_WS_URL: string;
+   readonly VITE_HOSTED_APP_URL: string;
+diff --git a/apps/web/vite.config.ts b/apps/web/vite.config.ts
+index cf343e26a..6df1ca203 100644
+--- a/apps/web/vite.config.ts
++++ b/apps/web/vite.config.ts
+@@ -17,9 +17,11 @@ import {
+ import { loadRepoEnv } from "../../scripts/lib/public-config";
+ import { thirdPartyLicensesPlugin } from "../../scripts/lib/third-party-licenses";
+ import { tailwindPlugins } from "./vite/tailwind";
++import { legacyCssPlugin } from "./vite/legacyCss";
+ 
+ const repoEnv = loadRepoEnv();
+ Object.assign(process.env, repoEnv);
++const legacyBrowser = process.env.T3CODE_LEGACY_BROWSER === "1";
+ 
+ // Single-origin dev is signalled positively, because it cannot be inferred
+ // from the absence of VITE_HTTP_URL/VITE_WS_URL: the runner deletes those keys
+@@ -184,6 +186,7 @@ export default defineConfig(() => {
+         presets: [reactCompilerPreset()],
+       }),
+       tailwindPlugins(bundledDev),
++      ...(legacyBrowser ? [legacyCssPlugin()] : []),
+     ],
+     optimizeDeps: {
+       include: [
+@@ -199,6 +202,7 @@ export default defineConfig(() => {
+       ],
+     },
+     define: {
++      "import.meta.env.VITE_LEGACY_BROWSER": JSON.stringify(legacyBrowser ? "1" : ""),
+       // In dev mode, tell the web app where the WebSocket server lives
+       "import.meta.env.VITE_WS_URL": JSON.stringify(configuredWsUrl ?? ""),
+       // Pinned explicitly rather than left to Vite's automatic VITE_ exposure:
+@@ -281,6 +285,7 @@ export default defineConfig(() => {
+       devSourcemap: buildSourcemap !== false,
+     },
+     build: {
++      ...(legacyBrowser ? { target: "safari15.6", cssTarget: "safari15.6" } : {}),
+       outDir: "dist",
+       emptyOutDir: true,
+       manifest: true,
+diff --git a/apps/web/vite/legacyCss.ts b/apps/web/vite/legacyCss.ts
+new file mode 100644
+index 000000000..8061a4310
+--- /dev/null
++++ b/apps/web/vite/legacyCss.ts
+@@ -0,0 +1,76 @@
++import postcss from "postcss";
++import { transform, Features } from "lightningcss";
++import type { Plugin } from "vite-plus";
++
++import { legacyCssValue } from "../src/lib/legacyCssValue";
++
++export function legacyCss(css: string): string {
++  const root = postcss.parse(css);
++  const initial = new Map<string, string>();
++  root.walkAtRules("property", (rule) => {
++    let inherits = false;
++    rule.walkDecls("inherits", (decl) => {
++      inherits = decl.value === "true";
++    });
++    rule.walkDecls("initial-value", (decl) => {
++      if (!inherits) initial.set(rule.params, legacyCssValue(decl.value));
++    });
++    rule.remove();
++  });
++  root.walkDecls((decl) => {
++    decl.value = legacyCssValue(decl.value);
++  });
++  if (initial.size) {
++    const layer = postcss.atRule({ name: "layer", params: "properties" });
++    const rule = postcss.rule({ selector: "*,::before,::after,::backdrop" });
++    for (const [prop, value] of initial) rule.append(postcss.decl({ prop, value }));
++    layer.append(rule);
++    root.prepend(layer);
++  }
++  const result = transform({
++    filename: "legacy.css",
++    code: Buffer.from(root.toString()),
++    targets: { safari: (15 << 16) | (6 << 8) },
++    include: Features.Nesting,
++    minify: false,
++  });
++  return new TextDecoder().decode(result.code);
++}
++
++export function legacyCssPlugin(): Plugin {
++  return {
++    name: "t3code:safari15-css",
++    enforce: "post",
++    // Diff styles are shipped as a JavaScript string, not as a CSS asset.
++    transform(code, id) {
++      if (!id.includes("@pierre/diffs/dist/")) return;
++      if (id.endsWith("/utils/cssWrappers.js")) {
++        const helper = new URL("../src/lib/legacyCssValue.ts", import.meta.url).pathname;
++        return (
++          `import { legacyCssValue } from ${JSON.stringify(helper)};\n` +
++          code
++            .replace("function wrapThemeCSS(themeCSS,", "function wrapThemeCSS(rawThemeCSS,")
++            .replace(
++              "const colorSchemeRule =",
++              "const themeCSS = legacyCssValue(rawThemeCSS);\nconst colorSchemeRule =",
++            )
++        );
++      }
++      return code.replace(
++        /(var (?:style|editor)_default = )("(?:[^"\\]|\\.)*")/,
++        (_match, prefix, literal) => prefix + JSON.stringify(legacyCss(JSON.parse(literal))),
++      );
++    },
++    generateBundle(_options, bundle) {
++      for (const asset of Object.values(bundle)) {
++        if (asset.type === "asset" && asset.fileName.endsWith(".css")) {
++          const css =
++            typeof asset.source === "string"
++              ? asset.source
++              : new TextDecoder().decode(asset.source);
++          asset.source = legacyCss(css);
++        }
++      }
++    },
++  };
++}
+diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
+index fdb699e66..0e4626f71 100644
+--- a/pnpm-lock.yaml
++++ b/pnpm-lock.yaml
+@@ -586,7 +586,7 @@ importers:
+         version: 4.0.2(patch_hash=595b7d26fb635caba9c3d39fcb189bb78a000192f8d3b60ead7174b310d1ade9)(@types/node@24.12.4)(@vitest/ui@5.0.1)(bufferutil@4.1.0)(effect@4.0.2(patch_hash=ec61ee307eaec3e17f757e0e6a16296ea4b7a8c3188df0c6ec5e66301fd78688))(esbuild@0.28.2)(jiti@2.7.0)(jsdom@30.1.0(@noble/hashes@1.8.0))(msw@2.12.11(@types/node@24.12.4)(typescript@7.0.2))(terser@5.48.0)(typescript@7.0.2)(unrun@0.2.39)(utf-8-validate@6.0.6)(yaml@2.9.0)
+       '@pierre/trees':
+         specifier: 1.0.0-beta.6
+-        version: 1.0.0-beta.6(@pierre/theme@2.0.0)(@shikijs/themes@4.2.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(shiki@4.2.0)
++        version: 1.0.0-beta.6(@pierre/theme@1.1.0)(@shikijs/themes@4.2.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(shiki@4.2.0)
+       '@types/mdast':
+         specifier: ^4.0.4
+         version: 4.0.4
+@@ -873,6 +873,12 @@ importers:
+       class-variance-authority:
+         specifier: ^0.7.1
+         version: 0.7.1
++      construct-style-sheets-polyfill:
++        specifier: 3.1.0
++        version: 3.1.0
++      core-js:
++        specifier: 3.49.0
++        version: 3.49.0
+       culori:
+         specifier: ^4.0.2
+         version: 4.0.2
+@@ -985,6 +991,15 @@ importers:
+       jsdom:
+         specifier: ^30.0.1
+         version: 30.1.0(@noble/hashes@1.8.0)
++      lightningcss:
++        specifier: 1.33.0
++        version: 1.33.0
++      postcss:
++        specifier: 8.5.28
++        version: 8.5.28
++      postcss-value-parser:
++        specifier: 4.2.0
++        version: 4.2.0
+       react-test-renderer:
+         specifier: 19.2.6
+         version: 19.2.6(react@19.2.6)
+@@ -7729,6 +7744,9 @@ packages:
+     resolution: {integrity: sha512-ZqRXc+tZukToSNmh5C2iWMSoV3X1YUcPbqEM4DkEG5tNQXrQUZCNVGGv3IuicnkMtPfGf3Xtp8WCXs295iQ1pQ==}
+     engines: {node: '>= 0.10.0'}
+ 
++  construct-style-sheets-polyfill@3.1.0:
++    resolution: {integrity: sha512-HBLKP0chz8BAY6rBdzda11c3wAZeCZ+kIG4weVC2NM3AXzxx09nhe8t0SQNdloAvg5GLuHwq/0SPOOSPvtCcKw==}
++
+   content-disposition@1.1.0:
+     resolution: {integrity: sha512-5jRCH9Z/+DRP7rkvY83B+yGIGX96OYdJmzngqnw2SBSxqCFPd0w2km3s5iawpGX8krnwSGmF0FW5Nhr0Hfai3g==}
+     engines: {node: '>=18'}
+@@ -7772,6 +7790,9 @@ packages:
+   core-js@3.47.0:
+     resolution: {integrity: sha512-c3Q2VVkGAUyupsjRnaNX6u8Dq2vAdzm9iuPj5FW0fRxzlxgq9Q39MDq10IvmQSpLgHQNyQzQmOo6bgGHmH3NNg==}
+ 
++  core-js@3.49.0:
++    resolution: {integrity: sha512-es1U2+YTtzpwkxVLwAFdSpaIMyQaq0PBgm3YD1W3Qpsn1NAmO3KSgZfu+oGSWVu6NvLHoHCV/aYcsE5wiB7ALg==}
++
+   core-util-is@1.0.2:
+     resolution: {integrity: sha512-3lqz5YjWTYnW6dlDa5TLaTCcShfar1e40rmcJVwCBJC6mWlFuj0eCHIElmG1g5kyuJ/GD+8Wn4FFCcz4gJPfaQ==}
+ 
+@@ -10616,6 +10637,9 @@ packages:
+   points-on-path@0.2.1:
+     resolution: {integrity: sha512-25ClnWWuw7JbWZcgqY/gJ4FQWadKxGWk+3kR/7kD0tCaDtPPMj7oHu2ToLaVhfpnHrZzYby2w6tUA0eOIuUg8g==}
+ 
++  postcss-value-parser@4.2.0:
++    resolution: {integrity: sha512-1NNCs6uurfkVbeXG4S8JFT9t19m45ICnif8zWLd5oPSZ50QnwMfK+H3jv408d4jw/7Bttv5axS5IiHoLaVNHeQ==}
++
+   postcss@8.5.28:
+     resolution: {integrity: sha512-RRuzqDtt5Y9h3quz5hWhK+TPnsmVs6WwSU6LkJMeY4HstUEDuYTG8UJSdawMRzmzAtV+KEoG8N3Qg2qLy5vM/A==}
+     engines: {node: ^10 || ^12 || >=14}
+@@ -15823,6 +15847,14 @@ snapshots:
+ 
+   '@pierre/theme@2.0.0': {}
+ 
++  '@pierre/theming@1.0.0(@pierre/theme@1.1.0)(@shikijs/themes@4.2.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(shiki@4.2.0)':
++    optionalDependencies:
++      '@pierre/theme': 1.1.0
++      '@shikijs/themes': 4.2.0
++      react: 19.3.0
++      react-dom: 19.3.0(react@19.3.0)
++      shiki: 4.2.0
++
+   '@pierre/theming@1.0.0(@pierre/theme@1.1.0)(@shikijs/themes@4.3.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(shiki@4.2.0)':
+     optionalDependencies:
+       '@pierre/theme': 1.1.0
+@@ -15831,14 +15863,6 @@ snapshots:
+       react-dom: 19.2.6(react@19.2.6)
+       shiki: 4.2.0
+ 
+-  '@pierre/theming@1.0.0(@pierre/theme@2.0.0)(@shikijs/themes@4.2.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(shiki@4.2.0)':
+-    optionalDependencies:
+-      '@pierre/theme': 2.0.0
+-      '@shikijs/themes': 4.2.0
+-      react: 19.3.0
+-      react-dom: 19.3.0(react@19.3.0)
+-      shiki: 4.2.0
+-
+   '@pierre/theming@1.0.1(@pierre/theme@2.0.0)(@shikijs/themes@4.2.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(shiki@4.2.0)':
+     optionalDependencies:
+       '@pierre/theme': 2.0.0
+@@ -15863,25 +15887,25 @@ snapshots:
+       react-dom: 19.3.0(react@19.3.0)
+       shiki: 4.2.0
+ 
+-  '@pierre/trees@1.0.0-beta.6(@pierre/theme@1.1.0)(@shikijs/themes@4.3.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(shiki@4.2.0)':
++  '@pierre/trees@1.0.0-beta.6(@pierre/theme@1.1.0)(@shikijs/themes@4.2.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(shiki@4.2.0)':
+     dependencies:
+-      '@pierre/theming': 1.0.0(@pierre/theme@1.1.0)(@shikijs/themes@4.3.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(shiki@4.2.0)
++      '@pierre/theming': 1.0.0(@pierre/theme@1.1.0)(@shikijs/themes@4.2.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(shiki@4.2.0)
+       preact: 11.0.0-beta.0
+       preact-render-to-string: 6.6.5(preact@11.0.0-beta.0)
+-      react: 19.2.6
+-      react-dom: 19.2.6(react@19.2.6)
++      react: 19.3.0
++      react-dom: 19.3.0(react@19.3.0)
+     transitivePeerDependencies:
+       - '@pierre/theme'
+       - '@shikijs/themes'
+       - shiki
+ 
+-  '@pierre/trees@1.0.0-beta.6(@pierre/theme@2.0.0)(@shikijs/themes@4.2.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(shiki@4.2.0)':
++  '@pierre/trees@1.0.0-beta.6(@pierre/theme@1.1.0)(@shikijs/themes@4.3.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(shiki@4.2.0)':
+     dependencies:
+-      '@pierre/theming': 1.0.0(@pierre/theme@2.0.0)(@shikijs/themes@4.2.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(shiki@4.2.0)
++      '@pierre/theming': 1.0.0(@pierre/theme@1.1.0)(@shikijs/themes@4.3.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(shiki@4.2.0)
+       preact: 11.0.0-beta.0
+       preact-render-to-string: 6.6.5(preact@11.0.0-beta.0)
+-      react: 19.3.0
+-      react-dom: 19.3.0(react@19.3.0)
++      react: 19.2.6
++      react-dom: 19.2.6(react@19.2.6)
+     transitivePeerDependencies:
+       - '@pierre/theme'
+       - '@shikijs/themes'
+@@ -16307,7 +16331,7 @@ snapshots:
+   '@shikijs/types@4.2.0':
+     dependencies:
+       '@shikijs/vscode-textmate': 10.0.2
+-      '@types/hast': 3.0.4
++      '@types/hast': 3.0.5
+ 
+   '@shikijs/types@4.3.0':
+     dependencies:
+@@ -18352,6 +18376,8 @@ snapshots:
+     transitivePeerDependencies:
+       - supports-color
+ 
++  construct-style-sheets-polyfill@3.1.0: {}
++
+   content-disposition@1.1.0: {}
+ 
+   content-type@1.0.5: {}
+@@ -18379,6 +18405,8 @@ snapshots:
+ 
+   core-js@3.47.0: {}
+ 
++  core-js@3.49.0: {}
++
+   core-util-is@1.0.2: {}
+ 
+   cors@2.8.6:
+@@ -19589,10 +19617,6 @@ snapshots:
+     dependencies:
+       walk-up-path: 4.0.0
+ 
+-  fdir@6.5.0(picomatch@4.0.4):
+-    optionalDependencies:
+-      picomatch: 4.0.4
+-
+   fdir@6.5.0(picomatch@4.0.7):
+     optionalDependencies:
+       picomatch: 4.0.7
+@@ -21790,6 +21814,8 @@ snapshots:
+       path-data-parser: 0.1.0
+       points-on-curve: 0.2.0
+ 
++  postcss-value-parser@4.2.0: {}
++
+   postcss@8.5.28:
+     dependencies:
+       nanoid: 3.3.19
+@@ -22696,7 +22722,7 @@ snapshots:
+       '@shikijs/themes': 4.2.0
+       '@shikijs/types': 4.2.0
+       '@shikijs/vscode-textmate': 10.0.2
+-      '@types/hast': 3.0.4
++      '@types/hast': 3.0.5
+ 
+   should-equal@2.0.0:
+     dependencies:
+@@ -23044,8 +23070,8 @@ snapshots:
+ 
+   tinyglobby@0.2.17:
+     dependencies:
+-      fdir: 6.5.0(picomatch@4.0.4)
+-      picomatch: 4.0.4
++      fdir: 6.5.0(picomatch@4.0.7)
++      picomatch: 4.0.7
+ 
+   tinypool@2.1.2: {}
+ 
