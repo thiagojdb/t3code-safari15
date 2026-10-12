@@ -1200,7 +1200,6 @@
 
   .sidebar-stage-backdrop {
     --stage-fade: var(--sidebar-stage-fade, var(--app-chrome-background));
-    mask-image: linear-gradient(#000 0% 55%, #0000 92%);
   }
 
   .sidebar-stage-backdrop:after {
@@ -1444,15 +1443,9 @@
     right: auto;
     left: calc(-1 * var(--live-activity-focus-width));
     width: calc(100% + var(--live-activity-focus-width) + var(--live-activity-focus-width));
-    -webkit-mask-image: linear-gradient(to right, transparent 0, #0000001f .675rem, #0000008c 1.575rem, black 2.25rem, #0000008c 2.925rem, #0000001f 3.825rem, transparent var(--live-activity-focus-width), transparent 100%);
-    -webkit-mask-repeat: no-repeat;
-    -webkit-mask-image: linear-gradient(to right, transparent 0, #0000001f .675rem, #0000008c 1.575rem, black 2.25rem, #0000008c 2.925rem, #0000001f 3.825rem, transparent var(--live-activity-focus-width), transparent 100%);
-    -webkit-mask-image: linear-gradient(to right, transparent 0, #0000001f .675rem, #0000008c 1.575rem, black 2.25rem, #0000008c 2.925rem, #0000001f 3.825rem, transparent var(--live-activity-focus-width), transparent 100%);
-    mask-image: linear-gradient(to right, transparent 0, #0000001f .675rem, #0000008c 1.575rem, black 2.25rem, #0000008c 2.925rem, #0000001f 3.825rem, transparent var(--live-activity-focus-width), transparent 100%);
     animation: 2.2s steps(30, end) infinite live-activity-focus;
     animation-play-state: var(--visible-animation-state, paused);
     will-change: var(--visible-animation-will-change, auto);
-    mask-repeat: no-repeat;
   }
 
   @media (prefers-reduced-motion: reduce), (forced-colors: active) {
@@ -2793,11 +2786,11 @@
   }
 
   .h-dvh {
-    height: 100dvh;
+    height: 100vh;
   }
 
   .h-dvh\! {
-    height: 100dvh !important;
+    height: 100vh !important;
   }
 
   .h-full {
@@ -2813,7 +2806,7 @@
   }
 
   .h-svh {
-    height: 100svh;
+    height: 100vh;
   }
 
   .max-h-\(--available-height\) {
@@ -2913,7 +2906,7 @@
   }
 
   .max-h-\[80dvh\] {
-    max-height: 80dvh;
+    max-height: 80vh;
   }
 
   .max-h-\[92vh\] {
@@ -2941,11 +2934,11 @@
   }
 
   .max-h-\[min\(24rem\,40dvh\)\] {
-    max-height: min(24rem, 40dvh);
+    max-height: min(24rem, 40vh);
   }
 
   .max-h-\[min\(24rem\,60dvh\)\] {
-    max-height: min(24rem, 60dvh);
+    max-height: min(24rem, 60vh);
   }
 
   .max-h-\[min\(28rem\,70vh\)\] {
@@ -2957,7 +2950,7 @@
   }
 
   .max-h-\[min\(32rem\,55dvh\)\] {
-    max-height: min(32rem, 55dvh);
+    max-height: min(32rem, 55vh);
   }
 
   .max-h-\[min\(34rem\,76vh\)\] {
@@ -2965,7 +2958,7 @@
   }
 
   .max-h-\[min\(42rem\,calc\(100dvh-6rem\)\)\] {
-    max-height: min(42rem, 100dvh - 6rem);
+    max-height: min(42rem, 100vh - 6rem);
   }
 
   .max-h-\[min\(64vh\,44rem\)\] {
@@ -2977,7 +2970,7 @@
   }
 
   .max-h-\[min\(calc\(100dvh-6\.5rem\)\,calc\(var\(--available-height\,100dvh\)-1rem\)\)\] {
-    max-height: min(calc(100dvh - 6.5rem), calc(var(--available-height, 100dvh) - 1rem));
+    max-height: min(calc(100vh - 6.5rem), calc(var(--available-height, 100vh) - 1rem));
   }
 
   .max-h-\[min\(var\(--available-height\)\,23rem\)\] {
@@ -2985,7 +2978,7 @@
   }
 
   .max-h-\[min\(var\(--available-height\)\,24rem\,40dvh\)\] {
-    max-height: min(var(--available-height), 24rem, 40dvh);
+    max-height: min(var(--available-height), 24rem, 40vh);
   }
 
   .max-h-\[var\(--media-height\)\] {
@@ -3153,7 +3146,7 @@
   }
 
   .min-h-svh {
-    min-height: 100svh;
+    min-height: 100vh;
   }
 
   .live-activity-focus-counter {
@@ -3543,7 +3536,7 @@
   }
 
   .w-dvw {
-    width: 100dvw;
+    width: 100vw;
   }
 
   .w-fit {
@@ -7530,81 +7523,36 @@
   }
 
   .mask-t-from-\[calc\(100\%-min\(var\(--fade-size\)\,var\(--scroll-area-overflow-y-start\)\)\)\] {
-    -webkit-mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
-    -webkit-mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
-    mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
     --tw-mask-linear: var(--tw-mask-left), var(--tw-mask-right), var(--tw-mask-bottom), var(--tw-mask-top);
     --tw-mask-top: linear-gradient(to top, var(--tw-mask-top-from-color) var(--tw-mask-top-from-position), var(--tw-mask-top-to-color) var(--tw-mask-top-to-position));
     --tw-mask-top-from-position: calc(100% - min(var(--fade-size), var(--scroll-area-overflow-y-start)));
-    -webkit-mask-composite: source-in;
-    -webkit-mask-composite: source-in;
-    mask-composite: intersect;
   }
 
   .mask-r-from-\[calc\(100\%-min\(var\(--fade-size\)\,var\(--scroll-area-overflow-x-end\)\)\)\] {
-    -webkit-mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
-    -webkit-mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
-    mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
     --tw-mask-linear: var(--tw-mask-left), var(--tw-mask-right), var(--tw-mask-bottom), var(--tw-mask-top);
     --tw-mask-right: linear-gradient(to right, var(--tw-mask-right-from-color) var(--tw-mask-right-from-position), var(--tw-mask-right-to-color) var(--tw-mask-right-to-position));
     --tw-mask-right-from-position: calc(100% - min(var(--fade-size), var(--scroll-area-overflow-x-end)));
-    -webkit-mask-composite: source-in;
-    -webkit-mask-composite: source-in;
-    mask-composite: intersect;
   }
 
   .mask-b-from-\[calc\(100\%-min\(var\(--fade-size\)\,var\(--scroll-area-overflow-y-end\)\)\)\] {
-    -webkit-mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
-    -webkit-mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
-    mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
     --tw-mask-linear: var(--tw-mask-left), var(--tw-mask-right), var(--tw-mask-bottom), var(--tw-mask-top);
     --tw-mask-bottom: linear-gradient(to bottom, var(--tw-mask-bottom-from-color) var(--tw-mask-bottom-from-position), var(--tw-mask-bottom-to-color) var(--tw-mask-bottom-to-position));
     --tw-mask-bottom-from-position: calc(100% - min(var(--fade-size), var(--scroll-area-overflow-y-end)));
-    -webkit-mask-composite: source-in;
-    -webkit-mask-composite: source-in;
-    mask-composite: intersect;
   }
 
   .mask-l-from-\[calc\(100\%-min\(var\(--fade-size\)\,var\(--scroll-area-overflow-x-start\)\)\)\] {
-    -webkit-mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
-    -webkit-mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
-    mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
     --tw-mask-linear: var(--tw-mask-left), var(--tw-mask-right), var(--tw-mask-bottom), var(--tw-mask-top);
     --tw-mask-left: linear-gradient(to left, var(--tw-mask-left-from-color) var(--tw-mask-left-from-position), var(--tw-mask-left-to-color) var(--tw-mask-left-to-position));
     --tw-mask-left-from-position: calc(100% - min(var(--fade-size), var(--scroll-area-overflow-x-start)));
-    -webkit-mask-composite: source-in;
-    -webkit-mask-composite: source-in;
-    mask-composite: intersect;
   }
 
   .topbar-scroll-fade {
-    -webkit-mask-image: linear-gradient(#0000 0%, #0000001a 10%, #0000004d 24%, #00000094 42%, #000000d1 62%, #000000f5 82%, #000 100%), linear-gradient(#000, #000), linear-gradient(#000, #000);
-    -webkit-mask-position: top, bottom, 100%;
-    -webkit-mask-repeat: no-repeat;
-    -webkit-mask-size: 100% calc(var(--workspace-titlebar-scroll-fade-height) + 1px), 100% calc(100% - var(--workspace-titlebar-scroll-fade-height)), var(--app-scrollbar-width) 100%;
-    mask-image: linear-gradient(#0000 0%, #0000001a 10%, #0000004d 24%, #00000094 42%, #000000d1 62%, #000000f5 82%, #000 100%), linear-gradient(#000, #000), linear-gradient(#000, #000);
-    mask-position: top, bottom, 100%;
-    mask-repeat: no-repeat;
-    -webkit-mask-size: 100% calc(var(--workspace-titlebar-scroll-fade-height) + 1px), 100% calc(100% - var(--workspace-titlebar-scroll-fade-height)), var(--app-scrollbar-width) 100%;
-    -webkit-mask-size: 100% calc(var(--workspace-titlebar-scroll-fade-height) + 1px), 100% calc(100% - var(--workspace-titlebar-scroll-fade-height)), var(--app-scrollbar-width) 100%;
-    mask-size: 100% calc(var(--workspace-titlebar-scroll-fade-height) + 1px), 100% calc(100% - var(--workspace-titlebar-scroll-fade-height)), var(--app-scrollbar-width) 100%;
   }
 
   .virtualized-scroll-fade {
-    -webkit-mask-image: var(--virtualized-scroll-fade-mask), linear-gradient(black, black);
-    -webkit-mask-image: var(--virtualized-scroll-fade-mask), linear-gradient(black, black);
-    -webkit-mask-image: var(--virtualized-scroll-fade-mask), linear-gradient(black, black);
-    mask-image: var(--virtualized-scroll-fade-mask), linear-gradient(black, black);
-    mask-position: 0, 100%;
-    mask-repeat: no-repeat;
-    -webkit-mask-size: calc(100% - var(--app-scrollbar-width)) 100%, var(--app-scrollbar-width) 100%;
-    -webkit-mask-size: calc(100% - var(--app-scrollbar-width)) 100%, var(--app-scrollbar-width) 100%;
-    -webkit-mask-size: calc(100% - var(--app-scrollbar-width)) 100%, var(--app-scrollbar-width) 100%;
-    mask-size: calc(100% - var(--app-scrollbar-width)) 100%, var(--app-scrollbar-width) 100%;
   }
 
   .\[mask-image\:linear-gradient\(to_right\,transparent\,black_1rem\)\] {
-    mask-image: linear-gradient(90deg, #0000, #000 1rem);
   }
 
   .bg-clip-padding {
@@ -11893,106 +11841,58 @@
 
   .before\:mask-t-from-transparent:before {
     content: var(--tw-content);
-    -webkit-mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
-    -webkit-mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
-    mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
     --tw-mask-linear: var(--tw-mask-left), var(--tw-mask-right), var(--tw-mask-bottom), var(--tw-mask-top);
     --tw-mask-top: linear-gradient(to top, var(--tw-mask-top-from-color) var(--tw-mask-top-from-position), var(--tw-mask-top-to-color) var(--tw-mask-top-to-position));
     --tw-mask-top-from-color: transparent;
-    -webkit-mask-composite: source-in;
-    -webkit-mask-composite: source-in;
-    mask-composite: intersect;
   }
 
   .before\:mask-t-from-4:before {
     content: var(--tw-content);
-    -webkit-mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
-    -webkit-mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
-    mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
     --tw-mask-linear: var(--tw-mask-left), var(--tw-mask-right), var(--tw-mask-bottom), var(--tw-mask-top);
     --tw-mask-top: linear-gradient(to top, var(--tw-mask-top-from-color) var(--tw-mask-top-from-position), var(--tw-mask-top-to-color) var(--tw-mask-top-to-position));
     --tw-mask-top-from-position: calc(var(--spacing) * 4);
-    -webkit-mask-composite: source-in;
-    -webkit-mask-composite: source-in;
-    mask-composite: intersect;
   }
 
   .before\:mask-t-to-black:before {
     content: var(--tw-content);
-    -webkit-mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
-    -webkit-mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
-    mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
     --tw-mask-linear: var(--tw-mask-left), var(--tw-mask-right), var(--tw-mask-bottom), var(--tw-mask-top);
     --tw-mask-top: linear-gradient(to top, var(--tw-mask-top-from-color) var(--tw-mask-top-from-position), var(--tw-mask-top-to-color) var(--tw-mask-top-to-position));
     --tw-mask-top-to-color: var(--color-black);
-    -webkit-mask-composite: source-in;
-    -webkit-mask-composite: source-in;
-    mask-composite: intersect;
   }
 
   .before\:mask-t-to-4:before {
     content: var(--tw-content);
-    -webkit-mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
-    -webkit-mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
-    mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
     --tw-mask-linear: var(--tw-mask-left), var(--tw-mask-right), var(--tw-mask-bottom), var(--tw-mask-top);
     --tw-mask-top: linear-gradient(to top, var(--tw-mask-top-from-color) var(--tw-mask-top-from-position), var(--tw-mask-top-to-color) var(--tw-mask-top-to-position));
     --tw-mask-top-to-position: calc(var(--spacing) * 4);
-    -webkit-mask-composite: source-in;
-    -webkit-mask-composite: source-in;
-    mask-composite: intersect;
   }
 
   .before\:mask-b-from-transparent:before {
     content: var(--tw-content);
-    -webkit-mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
-    -webkit-mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
-    mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
     --tw-mask-linear: var(--tw-mask-left), var(--tw-mask-right), var(--tw-mask-bottom), var(--tw-mask-top);
     --tw-mask-bottom: linear-gradient(to bottom, var(--tw-mask-bottom-from-color) var(--tw-mask-bottom-from-position), var(--tw-mask-bottom-to-color) var(--tw-mask-bottom-to-position));
     --tw-mask-bottom-from-color: transparent;
-    -webkit-mask-composite: source-in;
-    -webkit-mask-composite: source-in;
-    mask-composite: intersect;
   }
 
   .before\:mask-b-from-4:before {
     content: var(--tw-content);
-    -webkit-mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
-    -webkit-mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
-    mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
     --tw-mask-linear: var(--tw-mask-left), var(--tw-mask-right), var(--tw-mask-bottom), var(--tw-mask-top);
     --tw-mask-bottom: linear-gradient(to bottom, var(--tw-mask-bottom-from-color) var(--tw-mask-bottom-from-position), var(--tw-mask-bottom-to-color) var(--tw-mask-bottom-to-position));
     --tw-mask-bottom-from-position: calc(var(--spacing) * 4);
-    -webkit-mask-composite: source-in;
-    -webkit-mask-composite: source-in;
-    mask-composite: intersect;
   }
 
   .before\:mask-b-to-black:before {
     content: var(--tw-content);
-    -webkit-mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
-    -webkit-mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
-    mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
     --tw-mask-linear: var(--tw-mask-left), var(--tw-mask-right), var(--tw-mask-bottom), var(--tw-mask-top);
     --tw-mask-bottom: linear-gradient(to bottom, var(--tw-mask-bottom-from-color) var(--tw-mask-bottom-from-position), var(--tw-mask-bottom-to-color) var(--tw-mask-bottom-to-position));
     --tw-mask-bottom-to-color: var(--color-black);
-    -webkit-mask-composite: source-in;
-    -webkit-mask-composite: source-in;
-    mask-composite: intersect;
   }
 
   .before\:mask-b-to-4:before {
     content: var(--tw-content);
-    -webkit-mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
-    -webkit-mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
-    mask-image: var(--tw-mask-linear), var(--tw-mask-radial), var(--tw-mask-conic);
     --tw-mask-linear: var(--tw-mask-left), var(--tw-mask-right), var(--tw-mask-bottom), var(--tw-mask-top);
     --tw-mask-bottom: linear-gradient(to bottom, var(--tw-mask-bottom-from-color) var(--tw-mask-bottom-from-position), var(--tw-mask-bottom-to-color) var(--tw-mask-bottom-to-position));
     --tw-mask-bottom-to-position: calc(var(--spacing) * 4);
-    -webkit-mask-composite: source-in;
-    -webkit-mask-composite: source-in;
-    mask-composite: intersect;
   }
 
   .before\:shadow-\[0_1px_--theme\(--color-black\/4\%\)\]:before {
@@ -13037,7 +12937,6 @@
   }
 
   .focus-visible\:mask-none:focus-visible {
-    mask-image: none;
   }
 
   .focus-visible\:text-foreground:focus-visible {
@@ -13677,7 +13576,6 @@
   }
 
   .has-focus-visible\:mask-none:has(:focus-visible) {
-    mask-image: none;
   }
 
   .has-focus-visible\:ring-0:has(:focus-visible) {
@@ -13775,7 +13673,7 @@
   }
 
   .has-data-workflow-expanded\:max-h-\[min\(28rem\,55dvh\)\]:has([data-workflow-expanded]) {
-    max-height: min(28rem, 55dvh);
+    max-height: min(28rem, 55vh);
   }
 
   .has-data-\[align\=block-end\]\:h-auto:has([data-align="block-end"]) {
@@ -15875,7 +15773,7 @@
     }
 
     .md\:h-dvh {
-      height: 100dvh;
+      height: 100vh;
     }
 
     .md\:grid-cols-2 {
@@ -16280,7 +16178,7 @@
     }
 
     .\@min-\[48rem\]\/providers\:h-\[min\(44rem\,calc\(100dvh-11rem\)\)\] {
-      height: min(44rem, 100dvh - 11rem);
+      height: min(44rem, 100vh - 11rem);
     }
 
     .\@min-\[48rem\]\/providers\:h-full {
@@ -19833,7 +19731,7 @@ html[data-theme-token-probe], html[data-theme-token-probe] *, html[data-theme-to
   z-index: 100;
   pointer-events: none;
   width: 100vw;
-  height: 100dvh;
+  height: 100vh;
   position: fixed;
   inset: 0;
   overflow: visible;
@@ -20253,7 +20151,7 @@ body {
 }
 
 html, body {
-  min-height: calc(100svh + env(safe-area-inset-top));
+  min-height: calc(100vh + env(safe-area-inset-top));
   overscroll-behavior: none;
 }
 
@@ -20686,24 +20584,11 @@ pre, code {
   background-image: var(--ultrathink-spectrum);
   pointer-events: none;
   filter: saturate(.82) brightness(.92);
-  -webkit-mask-composite: xor;
-  -webkit-mask-composite: xor;
-  -webkit-mask-source-type: auto, auto;
-  -webkit-mask-composite: xor;
-  -webkit-mask-source-type: auto, auto;
   background-position: 0%;
   background-size: 220% 220%;
   padding: 2px;
   position: absolute;
   inset: 0;
-  mask-image: linear-gradient(#000 0 0), linear-gradient(#000 0 0);
-  mask-position: 0 0, 0 0;
-  mask-size: auto, auto;
-  mask-repeat: repeat, repeat;
-  mask-clip: content-box, border-box;
-  mask-origin: content-box, border-box;
-  mask-composite: exclude;
-  mask-mode: match-source, match-source;
 }
 
 .ultrathink-frame > * {

@@ -353,16 +353,22 @@ index 000000000..7b092486d
 +}
 diff --git a/apps/web/src/lib/legacyCss.test.ts b/apps/web/src/lib/legacyCss.test.ts
 new file mode 100644
-index 000000000..ccc84e383
+index 000000000..c5127f730
 --- /dev/null
 +++ b/apps/web/src/lib/legacyCss.test.ts
-@@ -0,0 +1,30 @@
+@@ -0,0 +1,36 @@
 +import { describe, expect, it } from "vite-plus/test";
 +
 +import { legacyCss } from "../../vite/legacyCss";
 +import { legacyCssValue } from "./legacyCssValue";
 +
 +describe("Safari 15 CSS output", () => {
++  it("keeps sidebar rows visible without combined fade masks or unsupported viewport units", () => {
++    const css = legacyCss(`.sidebar { height: 100svh; mask-image: linear-gradient(black, transparent); -webkit-mask-composite: source-in; }`);
++    expect(css).not.toContain("mask-image");
++    expect(css).not.toContain("mask-composite");
++    expect(css).toContain("height: 100vh");
++  });
 +  it("converts palette literals while preserving variable references and gradients", () => {
 +    const css = legacyCss(`:root { --background: oklch(1 0 0); }
 +      .panel { background: linear-gradient(oklch(0 0 0), color-mix(in oklab, var(--background) calc(80% + 1%), transparent)); }`);
@@ -584,10 +590,10 @@ index cf343e26a..e2e8a57c6 100644
        manifest: true,
 diff --git a/apps/web/vite/legacyCss.ts b/apps/web/vite/legacyCss.ts
 new file mode 100644
-index 000000000..8061a4310
+index 000000000..be88e4a3e
 --- /dev/null
 +++ b/apps/web/vite/legacyCss.ts
-@@ -0,0 +1,76 @@
+@@ -0,0 +1,83 @@
 +import postcss from "postcss";
 +import { transform, Features } from "lightningcss";
 +import type { Plugin } from "vite-plus";
@@ -608,7 +614,14 @@ index 000000000..8061a4310
 +    rule.remove();
 +  });
 +  root.walkDecls((decl) => {
++    // Safari 15 cannot reliably compose Tailwind's multi-axis scroll fades.
++    // A broken mask hides every thread row while leaving the header visible.
++    if (/^(?:-webkit-)?mask(?:-|$)/.test(decl.prop)) {
++      decl.remove();
++      return;
++    }
 +    decl.value = legacyCssValue(decl.value);
++    decl.value = decl.value.replace(/\b([\d.]+)[dsl]vh\b/g, "$1vh").replace(/\b([\d.]+)[dsl]vw\b/g, "$1vw");
 +  });
 +  if (initial.size) {
 +    const layer = postcss.atRule({ name: "layer", params: "properties" });
