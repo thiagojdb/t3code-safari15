@@ -1,3 +1,16 @@
+diff --git a/apps/web/index.html b/apps/web/index.html
+index c2d164742..7c6f6c692 100644
+--- a/apps/web/index.html
++++ b/apps/web/index.html
+@@ -2,6 +2,8 @@
+ <html lang="en">
+   <head>
+     <meta charset="UTF-8" />
++    <meta name="apple-mobile-web-app-capable" content="yes" />
++    <meta name="apple-mobile-web-app-title" content="T3 Code" />
+     <meta
+       name="viewport"
+       content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
 diff --git a/apps/web/package.json b/apps/web/package.json
 index b4ef7684a..7f485d5ba 100644
 --- a/apps/web/package.json
@@ -21,6 +34,39 @@ index b4ef7684a..7f485d5ba 100644
      "react-test-renderer": "19.2.6",
      "tailwindcss": "^4.0.0",
      "unified": "catalog:",
+diff --git a/apps/web/public/manifest.webmanifest b/apps/web/public/manifest.webmanifest
+index 038955133..efb77471d 100644
+--- a/apps/web/public/manifest.webmanifest
++++ b/apps/web/public/manifest.webmanifest
+@@ -1,20 +1,22 @@
+ {
+-  "id": "/",
+-  "start_url": "/",
+-  "scope": "/",
++  "id": "./",
++  "start_url": "./",
++  "scope": "./",
+   "display": "standalone",
+   "background_color": "#161616",
+   "theme_color": "#161616",
+   "icons": [
+     {
+-      "src": "/favicon-32x32.png",
++      "src": "./favicon-32x32.png",
+       "sizes": "32x32",
+       "type": "image/png"
+     },
+     {
+-      "src": "/apple-touch-icon.png",
++      "src": "./apple-touch-icon.png",
+       "sizes": "180x180",
+       "type": "image/png"
+     }
+-  ]
++  ],
++  "name": "T3 Code Safari",
++  "short_name": "T3 Code"
+ }
 diff --git a/apps/web/src/bootstrap.test.ts b/apps/web/src/bootstrap.test.ts
 index c5c0d8959..284176a2a 100644
 --- a/apps/web/src/bootstrap.test.ts
