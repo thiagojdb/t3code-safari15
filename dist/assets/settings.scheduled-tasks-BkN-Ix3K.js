@@ -1,0 +1,1 @@
+import{c as e}from"./legacyColor-C5BGferB.js";import{Sa as t,Sx as n}from"./utils-C04APqPL.js";import{a as r}from"./main-CBJImtt1.js";import{t as i}from"./ScheduledTasksSettings-3q9t4Rk9.js";var a=n(),o=e(t());function s(){let e=(0,a.c)(2),t=r.useSearch(),n;return e[0]===t?n=e[1]:(n=(0,o.jsx)(i,{...t}),e[0]=t,e[1]=n),n}export{s as component};

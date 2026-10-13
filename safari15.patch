@@ -101,6 +101,59 @@ index 9a3d4a03b..e8d160cb7 100644
 +  .then(() => import("./main"))
 +  .then(({ startup }) => startup)
 +  .catch(showBootError);
+diff --git a/apps/web/src/components/Sidebar.tsx b/apps/web/src/components/Sidebar.tsx
+index 0243fc502..2b9ca34da 100644
+--- a/apps/web/src/components/Sidebar.tsx
++++ b/apps/web/src/components/Sidebar.tsx
+@@ -74,6 +74,7 @@ import {
+   CircleDashedIcon,
+   ClockIcon,
+   EyeIcon,
++  EllipsisIcon,
+   FolderIcon,
+   GitBranchIcon,
+   ListFilterIcon,
+@@ -1790,6 +1791,24 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
+     )
+   ) : null;
+ 
++  const touchActionsButton = sortable?.isDragging ? null : (
++    <button
++      type="button"
++      aria-label="Thread actions"
++      className="sidebar-touch-actions shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
++      onPointerDown={(event) => event.stopPropagation()}
++      onDoubleClick={(event) => event.stopPropagation()}
++      onClick={(event) => {
++        event.preventDefault();
++        event.stopPropagation();
++        const rect = event.currentTarget.getBoundingClientRect();
++        onContextMenu(threadRef, { x: rect.left, y: rect.bottom });
++      }}
++    >
++      <EllipsisIcon aria-hidden className="size-4" />
++    </button>
++  );
++
+   if (variant === "slim") {
+     return (
+       <li
+@@ -1837,6 +1856,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
+             {title}
+             {pinIndicator}
+             {terminalStatusIcon}
++            {touchActionsButton}
+             {isRegeneratingTitle ? (
+               <span role="status" className="sr-only">
+                 Regenerating title
+@@ -2006,6 +2026,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
+                 <span className="flex-1" />
+               )}
+               {pinIndicator}
++              {touchActionsButton}
+               {/* The visible state owns this slot's width: status at rest,
+                   actions on hover/keyboard focus or while the popover is open. Keeping
+                   the hidden state out of flow lets the project label reclaim
 diff --git a/apps/web/src/components/chat/composerPromptHistory.ts b/apps/web/src/components/chat/composerPromptHistory.ts
 index 0977637cd..70c4498f1 100644
 --- a/apps/web/src/components/chat/composerPromptHistory.ts
@@ -229,7 +282,7 @@ index 00fcae959..7620f7867 100644
  
    const label = input.label?.trim();
 diff --git a/apps/web/src/index.css b/apps/web/src/index.css
-index 90f204d20..ce6faef1c 100644
+index 90f204d20..fe6b6c24b 100644
 --- a/apps/web/src/index.css
 +++ b/apps/web/src/index.css
 @@ -87,6 +87,8 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
@@ -253,6 +306,22 @@ index 90f204d20..ce6faef1c 100644
  .wco {
    --workspace-topbar-height: max(40px, env(titlebar-area-height, 52px));
    --workspace-controls-top: env(titlebar-area-y, 0px);
+@@ -2367,3 +2374,15 @@ code {
+     }
+   }
+ }
++
++/* Explicit thread actions for devices without a mouse context menu. */
++.sidebar-touch-actions {
++  display: none;
++  width: 2rem;
++  height: 2rem;
++}
++@media (any-pointer: coarse), (max-width: 767px) {
++  .sidebar-touch-actions {
++    display: inline-flex;
++  }
++}
 diff --git a/apps/web/src/legacyBrowser.test.ts b/apps/web/src/legacyBrowser.test.ts
 new file mode 100644
 index 000000000..631a89a43
