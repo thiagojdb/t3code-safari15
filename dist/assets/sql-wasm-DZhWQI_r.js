@@ -1,0 +1,1 @@
+var e=`/t3code-safari15/assets/sql-wasm-C1D_RJuy.wasm`;export{e as default};

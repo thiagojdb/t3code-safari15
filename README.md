@@ -1,19 +1,30 @@
 # T3 Code nightly for Safari 15
 
-Personal static frontend build based on nightly `0.0.46-nightly.20261012.3035`, upstream commit `511d20c6f20c2ed6ff787aba068d7d673e2949b9`.
+A static frontend for iOS Safari 15.6, based on T3 Code nightly
+`0.1.11-nightly.20261119.4954` (upstream commit
+`b0b2c4f952d3a12a886e915ad8ffe7e82ebc1fb4`).
 
 https://thiagojdb.github.io/t3code-safari15/
 
-Connect to an existing T3 Code server using its HTTPS pairing link through Settings / Connections. No backend, credentials or user data are included. T3 Connect cloud sign-in is not configured on this custom origin.
+Connect to an existing T3 Code server using its HTTPS pairing link in
+Settings → Connections. The ⋯ button next to a thread opens its actions on
+touch devices. T3 Connect cloud sign-in is unavailable on this custom origin.
 
-Includes JavaScript API and constructable stylesheet polyfills, Safari 15.6 output, RGB theme colours and simplified CSS effects. Browser verification has not been performed; actual iOS 15 testing remains necessary.
+This is a pinned snapshot. The compatibility patch targets Safari 15.6
+JavaScript and CSS, adds browser API polyfills, and preserves the site's
+subpath for pairing, routing, and the Home Screen app.
 
-This is a pinned nightly snapshot, not an automatic daily rebuild.
+To reproduce the build, apply `safari15.patch` to the upstream commit and use
+Node 26.13.1 and pnpm 12.14.0:
 
-The compatibility patch is in `safari15.patch`. Build from the upstream commit with the patch applied, install dependencies, then run in `apps/web`:
-
+```sh
+pnpm install --frozen-lockfile --ignore-scripts --filter '@t3tools/web...' --filter '@t3tools/monorepo'
+cd apps/web
+T3CODE_LEGACY_BROWSER=1 T3CODE_WEB_SOURCEMAP=0 VITE_HOSTED_APP_CHANNEL=nightly \
+  APP_VERSION=0.1.11-nightly.20261119.4954 ../../node_modules/.bin/vp build --base /t3code-safari15/
+cp dist/index.html dist/404.html
+touch dist/.nojekyll
 ```
-T3CODE_LEGACY_BROWSER=1 T3CODE_WEB_SOURCEMAP=0 VITE_HOSTED_APP_CHANNEL=nightly APP_VERSION=0.0.46-nightly.20261012.3035 ../../node_modules/.bin/vp build --base ./
-```
 
-Third-party notices are shipped with the application. Upstream: https://github.com/pingdotgg/t3code
+The Pages workflow publishes the checked-in `dist` directory. The frontend
+includes third-party notices and ships no backend or credentials.

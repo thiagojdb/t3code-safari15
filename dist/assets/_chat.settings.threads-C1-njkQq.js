@@ -1,0 +1,1 @@
+import{s as e}from"./SettingsPanels-DejRi00Z.js";var t=e;export{t as component};

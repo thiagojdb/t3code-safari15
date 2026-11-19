@@ -1,0 +1,1 @@
+import{c as e}from"./legacyColor-DJMcM4Vu.js";import{n as t,t as n}from"./jsx-runtime-DacOblfc.js";var r=t(),i=`/t3code-safari15/assets/t3-black-web-apple-touch-180-CkNIZSlO.png`,a=e(n(),1);function o(e){let t=(0,r.c)(2),n;return t[0]===e.className?n=t[1]:(n=(0,a.jsx)(`img`,{src:i,alt:``,className:e.className}),t[0]=e.className,t[1]=n),n}export{o as t};

@@ -1,1 +1,0 @@
-import{c as e}from"./legacyColor-C5BGferB.js";import{r as t}from"./Icon-QjMt6TC9.js";var n=e(t()),r=n.createContext({disabled:!1});function i(){return n.useContext(r)}export{i as t};

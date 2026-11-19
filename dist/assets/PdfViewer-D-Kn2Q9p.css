@@ -1,0 +1,85 @@
+[data-pdf-text-layer] {
+  text-align: initial;
+  letter-spacing: normal;
+  word-spacing: normal;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
+  --scale-round-x: 1px;
+  --scale-round-y: 1px;
+  line-height: 1;
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+}
+
+[data-pdf-text-layer][data-main-rotation="90"] {
+  transform: rotate(90deg) translateY(-100%);
+}
+
+[data-pdf-text-layer][data-main-rotation="180"] {
+  transform: rotate(180deg) translate(-100%, -100%);
+}
+
+[data-pdf-text-layer][data-main-rotation="270"] {
+  transform: rotate(270deg) translate(-100%);
+}
+
+[data-pdf-text-layer] :is(span, br) {
+  color: #0000;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0 0;
+  -webkit-user-select: text;
+  user-select: text;
+  position: absolute;
+}
+
+[data-pdf-text-layer] > :not(.markedContent), [data-pdf-text-layer] .markedContent span:not(.markedContent) {
+  --font-height: 0;
+  --scale-x: 1;
+  --rotate: 0deg;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+}
+
+[data-pdf-text-layer] .markedContent {
+  display: contents;
+}
+
+[data-pdf-text-layer] ::selection {
+  background: #4a90e266;
+}
+
+[data-pdf-text-layer] .pdf-find-match {
+  background: #ffc80066;
+}
+
+@media (max-width: 767px) {
+  :root {
+    --workspace-controls-top: env(safe-area-inset-top, 0px);
+  }
+
+  [data-chat-header] {
+    height: var(--workspace-topbar-height);
+    min-height: var(--workspace-topbar-height);
+    flex-shrink: 0;
+    align-items: center;
+    display: flex;
+    padding-left: calc(env(safe-area-inset-left, 0px) + 3.5rem) !important;
+    padding-right: calc(env(safe-area-inset-right, 0px) + 7.5rem) !important;
+  }
+
+  [data-chat-header] > :not([data-workspace-titlebar-controls]) {
+    min-width: 0;
+  }
+
+  [data-sidebar-control], [data-workspace-titlebar-controls] {
+    height: var(--workspace-topbar-height);
+    align-items: center;
+    top: env(safe-area-inset-top, 0px) !important;
+  }
+}

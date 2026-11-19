@@ -1,0 +1,1 @@
+import{t as e}from"./IntegrationsSettings-BDJEvrep.js";var t=e;export{t as component};

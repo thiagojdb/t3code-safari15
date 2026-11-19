@@ -1,0 +1,1 @@
+function e(e){if(e.getModifierState?.(`AltGraph`)&&!/^[a-z0-9]$/i.test(e.key))return null;let t=e.key.toLowerCase();return(/^[\p{L}\p{M}]+$/u.test(t)&&!/\p{Script=Latin}/u.test(t)?e.code?.match(/^Key([A-Z])$/)?.[1]?.toLowerCase():void 0)??t}export{e as t};

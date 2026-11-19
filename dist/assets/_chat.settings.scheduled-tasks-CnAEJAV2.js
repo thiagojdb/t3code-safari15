@@ -1,0 +1,1 @@
+import{c as e}from"./legacyColor-DJMcM4Vu.js";import{n as t,t as n}from"./jsx-runtime-DacOblfc.js";import{a as r}from"./main-DOHqjC4d.js";import{n as i}from"./ScheduledTasksSettings-WJquJkQJ.js";var a=t(),o=e(n());function s(){let e=(0,a.c)(2),t=r.useSearch(),n;return e[0]===t?n=e[1]:(n=(0,o.jsx)(i,{...t}),e[0]=t,e[1]=n),n}export{s as component};

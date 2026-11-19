@@ -1,0 +1,1 @@
+var e=0,t=new Set;function n(n){let r=e>0;if(e=n,r!==e>0)for(let e of t)e()}function r(){return n(e+1),()=>{n(e-1)}}function i(){return e>0}function a(e){return t.add(e),()=>{t.delete(e)}}export{r as n,a as r,i as t};

@@ -1,5 +1,5 @@
 diff --git a/apps/web/index.html b/apps/web/index.html
-index c2d164742..7c6f6c692 100644
+index 051e3090a5..60fd30d9ee 100644
 --- a/apps/web/index.html
 +++ b/apps/web/index.html
 @@ -2,6 +2,8 @@
@@ -12,38 +12,50 @@ index c2d164742..7c6f6c692 100644
        name="viewport"
        content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
 diff --git a/apps/web/package.json b/apps/web/package.json
-index b4ef7684a..7f485d5ba 100644
+index 88a3fcaf35..6f1e203fc3 100644
 --- a/apps/web/package.json
 +++ b/apps/web/package.json
-@@ -51,6 +51,8 @@
-     "@tiptap/react": "^3.31.3",
+@@ -59,6 +59,8 @@
      "@tiptap/starter-kit": "^3.31.3",
+     "canvas-confetti": "1.9.4",
      "class-variance-authority": "^0.7.1",
 +    "construct-style-sheets-polyfill": "3.1.0",
 +    "core-js": "3.49.0",
      "culori": "^4.0.2",
-     "dompurify": "^3.4.16",
+     "dompurify": "^3.4.17",
      "effect": "catalog:",
-@@ -90,6 +92,9 @@
-     "babel-plugin-react-compiler": "1.0.0",
-     "compression": "^1.8.2",
-     "jsdom": "^30.0.1",
-+    "lightningcss": "catalog:",
-+    "postcss": "8.5.28",
+@@ -77,6 +79,7 @@
+     "micromark-util-combine-extensions": "^2.0.1",
+     "pdfjs-dist": "6.4.299",
+     "pele": "catalog:",
 +    "postcss-value-parser": "4.2.0",
-     "react-test-renderer": "19.2.6",
+     "react": "catalog:",
+     "react-dom": "catalog:",
+     "react-markdown": "^10.1.0",
+@@ -112,9 +115,11 @@
+     "@vitest/browser-playwright": "5.0.5",
+     "compression": "^1.8.2",
+     "gt": "2.27.0",
++    "lightningcss": "catalog:",
+     "micromark-util-types": "catalog:",
+     "oxc-transform-react": "~0.152.0",
+     "playwright": "1.64.1",
++    "postcss": "8.5.28",
      "tailwindcss": "^4.0.0",
-     "unified": "catalog:",
+     "vite": "catalog:",
+     "vite-plus": "catalog:"
 diff --git a/apps/web/public/manifest.webmanifest b/apps/web/public/manifest.webmanifest
-index 038955133..efb77471d 100644
+index 26d1c2e0d3..afdb8d7e6c 100644
 --- a/apps/web/public/manifest.webmanifest
 +++ b/apps/web/public/manifest.webmanifest
-@@ -1,20 +1,22 @@
+@@ -1,31 +1,31 @@
  {
 -  "id": "/",
++  "id": "./",
+   "name": "T3 Code",
+   "short_name": "T3 Code",
 -  "start_url": "/",
 -  "scope": "/",
-+  "id": "./",
 +  "start_url": "./",
 +  "scope": "./",
    "display": "standalone",
@@ -61,37 +73,31 @@ index 038955133..efb77471d 100644
 +      "src": "./apple-touch-icon.png",
        "sizes": "180x180",
        "type": "image/png"
-     }
--  ]
-+  ],
-+  "name": "T3 Code Safari",
-+  "short_name": "T3 Code"
- }
-diff --git a/apps/web/src/bootstrap.test.ts b/apps/web/src/bootstrap.test.ts
-index c5c0d8959..284176a2a 100644
---- a/apps/web/src/bootstrap.test.ts
-+++ b/apps/web/src/bootstrap.test.ts
-@@ -90,4 +90,11 @@ describe("app startup failures", () => {
- 
-     expect(createElement).not.toHaveBeenCalled();
-   });
-+
-+  it("shows diagnostic details in the legacy production build", () => {
-+    vi.stubEnv("DEV", false);
-+    vi.stubEnv("VITE_LEGACY_BROWSER", "1");
-+    showBootError(new Error("Missing browser API"));
-+    expect(bootShell?.text).toContain("Missing browser API");
-+  });
- });
+     },
+     {
+-      "src": "/icon-192x192.png",
++      "src": "./icon-192x192.png",
+       "sizes": "192x192",
+       "type": "image/png",
+       "purpose": "any"
+     },
+     {
+-      "src": "/icon-512x512.png",
++      "src": "./icon-512x512.png",
+       "sizes": "512x512",
+       "type": "image/png",
+       "purpose": "any"
 diff --git a/apps/web/src/bootstrap.ts b/apps/web/src/bootstrap.ts
-index 9a3d4a03b..e8d160cb7 100644
+index b6f422c5d6..e8d160cb7b 100644
 --- a/apps/web/src/bootstrap.ts
 +++ b/apps/web/src/bootstrap.ts
-@@ -2,4 +2,12 @@ import { showBootError } from "./lib/bootError";
+@@ -1,4 +1,13 @@
+ import { showBootError } from "./lib/bootError";
  
- // Bundled dev can move UI code into shared chunks. Load it only after this
- // entry runs the React refresh preamble, and catch failures before React mounts.
+-// Shared dev chunks need the React refresh preamble first. Catch failures before React mounts.
 -void import("./main").then(({ startup }) => startup).catch(showBootError);
++// Bundled dev can move UI code into shared chunks. Load it only after this
++// entry runs the React refresh preamble, and catch failures before React mounts.
 +const compatibility =
 +  import.meta.env.VITE_LEGACY_BROWSER === "1"
 +    ? import("./legacyBrowser").then(({ prepareLegacyBrowser }) => prepareLegacyBrowser())
@@ -101,67 +107,14 @@ index 9a3d4a03b..e8d160cb7 100644
 +  .then(() => import("./main"))
 +  .then(({ startup }) => startup)
 +  .catch(showBootError);
-diff --git a/apps/web/src/components/Sidebar.tsx b/apps/web/src/components/Sidebar.tsx
-index 0243fc502..2b9ca34da 100644
---- a/apps/web/src/components/Sidebar.tsx
-+++ b/apps/web/src/components/Sidebar.tsx
-@@ -74,6 +74,7 @@ import {
-   CircleDashedIcon,
-   ClockIcon,
-   EyeIcon,
-+  EllipsisIcon,
-   FolderIcon,
-   GitBranchIcon,
-   ListFilterIcon,
-@@ -1790,6 +1791,24 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
-     )
-   ) : null;
- 
-+  const touchActionsButton = sortable?.isDragging ? null : (
-+    <button
-+      type="button"
-+      aria-label="Thread actions"
-+      className="sidebar-touch-actions shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-+      onPointerDown={(event) => event.stopPropagation()}
-+      onDoubleClick={(event) => event.stopPropagation()}
-+      onClick={(event) => {
-+        event.preventDefault();
-+        event.stopPropagation();
-+        const rect = event.currentTarget.getBoundingClientRect();
-+        onContextMenu(threadRef, { x: rect.left, y: rect.bottom });
-+      }}
-+    >
-+      <EllipsisIcon aria-hidden className="size-4" />
-+    </button>
-+  );
-+
-   if (variant === "slim") {
-     return (
-       <li
-@@ -1837,6 +1856,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
-             {title}
-             {pinIndicator}
-             {terminalStatusIcon}
-+            {touchActionsButton}
-             {isRegeneratingTitle ? (
-               <span role="status" className="sr-only">
-                 Regenerating title
-@@ -2006,6 +2026,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
-                 <span className="flex-1" />
-               )}
-               {pinIndicator}
-+              {touchActionsButton}
-               {/* The visible state owns this slot's width: status at rest,
-                   actions on hover/keyboard focus or while the popover is open. Keeping
-                   the hidden state out of flow lets the project label reclaim
 diff --git a/apps/web/src/components/chat/composerPromptHistory.ts b/apps/web/src/components/chat/composerPromptHistory.ts
-index 0977637cd..70c4498f1 100644
+index 65244d9259..6240f20c0f 100644
 --- a/apps/web/src/components/chat/composerPromptHistory.ts
 +++ b/apps/web/src/components/chat/composerPromptHistory.ts
-@@ -95,9 +95,10 @@ function stripInlineTerminalLabels(prompt: string, headers: ReadonlyArray<string
+@@ -78,9 +78,10 @@ function stripInlineTerminalLabels(prompt: string, headers: ReadonlyArray<string
+     const match = /^(.+?) lines? (\d+(?:-\d+)?)$/.exec(header);
+     if (!match) continue;
      const label = `@${match[1]!.trim().toLowerCase().replace(/\s+/g, "-")}:${match[2]}`;
-     // Whole label only: `@terminal-1:4` must not match inside `@terminal-1:40`
-     // or `@terminal-1:4-12`.
 -    const labelPattern = new RegExp(`(?<![\\w@.-])${escapeRegExp(label)}(?![\\d-])`);
 -    const index = result.search(labelPattern);
 -    if (index < 0) continue;
@@ -172,29 +125,26 @@ index 0977637cd..70c4498f1 100644
      let end = index + label.length;
      let start = index;
      if (result[end] === " ") end += 1;
-diff --git a/apps/web/src/components/settings/ConnectionsSettings.tsx b/apps/web/src/components/settings/ConnectionsSettings.tsx
-index 443ac6e02..49bef727e 100644
---- a/apps/web/src/components/settings/ConnectionsSettings.tsx
-+++ b/apps/web/src/components/settings/ConnectionsSettings.tsx
-@@ -139,7 +139,7 @@ import { AnimatedHeight } from "../AnimatedHeight";
- import { EnvironmentMachineIcon } from "../EnvironmentMachineIcon";
- import { Textarea } from "../ui/textarea";
- import { getPairingTokenFromUrl, setPairingTokenOnUrl } from "../../pairingUrl";
--import { readHostedPairingRequest } from "../../hostedPairing";
-+import { configuredHostedAppUrl, readHostedPairingRequest } from "../../hostedPairing";
- import {
-   createServerPairingCredential,
-   revokeOtherServerClientSessions,
-@@ -524,14 +524,14 @@ function resolveAdvertisedEndpointPairingUrl(
- }
- 
- function resolveCurrentOriginPairingUrl(credential: string): string {
--  const url = new URL("/pair", window.location.href);
-+  const url = new URL("pair", configuredHostedAppUrl().replace(/\/?$/, "/"));
-   return setPairingTokenOnUrl(url, credential).toString();
- }
- 
- function isHostedAppPairingUrl(value: string): boolean {
+diff --git a/apps/web/src/components/settings/ConnectionsSettings.logic.ts b/apps/web/src/components/settings/ConnectionsSettings.logic.ts
+index 4ec7d9dec9..7f857ba27c 100644
+--- a/apps/web/src/components/settings/ConnectionsSettings.logic.ts
++++ b/apps/web/src/components/settings/ConnectionsSettings.logic.ts
+@@ -1,3 +1,4 @@
++import { appPath } from "../../lib/appBasePath";
+ import { thrownErrorMessage } from "@t3tools/client-runtime/errors";
+ import * as DateTime from "effect/DateTime";
+ import { msg } from "gt-react";
+@@ -453,7 +454,7 @@ export function resolveCurrentOriginPairingUrl(
+   credential: string,
+   currentHref: string = window.location.href,
+ ): string | null {
+-  const url = new URL("/pair", currentHref);
++  const url = new URL(appPath("pair"), currentHref);
+   // The packaged desktop window loads from t3code://app, which no other device can open.
+   if ((url.protocol !== "http:" && url.protocol !== "https:") || isLoopbackHostname(url.hostname)) {
+     return null;
+@@ -464,7 +465,7 @@ export function resolveCurrentOriginPairingUrl(
+ export function isHostedAppPairingUrl(value: string): boolean {
    try {
      const url = new URL(value);
 -    return url.pathname === "/pair" && url.searchParams.has("host");
@@ -202,40 +152,139 @@ index 443ac6e02..49bef727e 100644
    } catch {
      return false;
    }
+diff --git a/apps/web/src/components/settings/SettingsPanels.tsx b/apps/web/src/components/settings/SettingsPanels.tsx
+index e0a1241784..cb586e792d 100644
+--- a/apps/web/src/components/settings/SettingsPanels.tsx
++++ b/apps/web/src/components/settings/SettingsPanels.tsx
+@@ -1,3 +1,4 @@
++import { appBasePath } from "../../lib/appBasePath";
+ import { thrownErrorMessage } from "@t3tools/client-runtime/errors";
+ import { m as resolveMessage } from "~/i18n/messages";
+ import { useAtomValue } from "@effect/atom-react";
+@@ -428,7 +429,7 @@ function AboutVersionSection() {
+             </Select>
+           }
+         />
+-      ) : selectedHostedAppChannel ? (
++      ) : selectedHostedAppChannel && appBasePath === "/" ? (
+         <SettingsRow
+           {...setting("update-track")}
+           description={gt("Switches the hosted app release channel.")}
+diff --git a/apps/web/src/components/sidebar/SidebarThreadRow.tsx b/apps/web/src/components/sidebar/SidebarThreadRow.tsx
+index 3e1695e63f..12badc7760 100644
+--- a/apps/web/src/components/sidebar/SidebarThreadRow.tsx
++++ b/apps/web/src/components/sidebar/SidebarThreadRow.tsx
+@@ -47,6 +47,7 @@ import {
+   CircleDashedIcon,
+   CircleDotDashedIcon,
+   ClockIcon,
++  EllipsisIcon,
+   GitBranchIcon,
+   MessageCircleQuestionIcon,
+   PinIcon,
+@@ -897,6 +898,24 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
+     event.preventDefault();
+     onContextMenu(threadRef, { x: event.clientX, y: event.clientY }, contextMenuSourceOf(event));
+   };
++  const touchActionsButton =
++    sortable?.isDragging || props.sweepAction !== null ? null : (
++      <button
++        type="button"
++        aria-label={gt("Thread actions")}
++        className="sidebar-touch-actions shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
++        onPointerDown={(event) => event.stopPropagation()}
++        onDoubleClick={(event) => event.stopPropagation()}
++        onClick={(event) => {
++          event.preventDefault();
++          event.stopPropagation();
++          const rect = event.currentTarget.getBoundingClientRect();
++          onContextMenu(threadRef, { x: rect.left, y: rect.bottom }, contextMenuSourceOf(event));
++        }}
++      >
++        <EllipsisIcon aria-hidden className="size-4" />
++      </button>
++    );
+   const handleKeyDown = (event: ReactKeyboardEvent) => {
+     if (event.target !== event.currentTarget) return;
+     if (
+@@ -1387,6 +1406,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
+               {pinIndicator}
+               {multiline ? null : terminalStatusIcon}
+               {multiline ? null : issueBadge}
++              {touchActionsButton}
+               {isRegeneratingTitle ? (
+                 <span role="status" className="sr-only">
+                   <T>Regenerating title</T>
+@@ -1588,6 +1608,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
+               ) : (
+                 <span className="flex-1" />
+               )}
++              {touchActionsButton}
+               {sortable?.isDragging ? (
+                 dragDestination
+               ) : (
+diff --git a/apps/web/src/composer-rich-text-doc.ts b/apps/web/src/composer-rich-text-doc.ts
+index 3c2b353f59..37bcd51f70 100644
+--- a/apps/web/src/composer-rich-text-doc.ts
++++ b/apps/web/src/composer-rich-text-doc.ts
+@@ -262,7 +262,7 @@ function literalBackticksBefore($pos: ResolvedPos): number {
+     if (node.marks.some((mark) => mark.type.spec.code)) return;
+ 
+     const text = node.text!.slice(0, $pos.parentOffset - offset);
+-    count += [...text.matchAll(/(?<!`)`(?!`)/g)].length;
++    count += [...text.matchAll(/`+/g)].filter(([run]) => run.length === 1).length;
+   });
+   return count;
+ }
+diff --git a/apps/web/src/composer-rich-text.ts b/apps/web/src/composer-rich-text.ts
+index a0f4340c32..d387c4ffec 100644
+--- a/apps/web/src/composer-rich-text.ts
++++ b/apps/web/src/composer-rich-text.ts
+@@ -24,7 +24,7 @@ function sameMarks(left: readonly RichTextMark[], right: readonly RichTextMark[]
+ }
+ 
+ // Brackets, quotes, commas, and Markdown delimiters end a URL or path token; a lone `~` does not.
+-const PATH_TOKEN = /(?:[\p{L}\p{N}_/.:@%+=&?#-]|(?<!~)~(?!~))+/gu;
++const PATH_TOKEN = /~{2,}|(?:[\p{L}\p{N}_/.:@%+=&?#-]|~(?!~))+/gu;
+ const FILE_EXTENSION = /^\.[a-z][a-z0-9]*(?::\d+){0,2}$/i;
+ // `_yes_/_no_`: each side of a slash is its own emphasis span, so the word is not a path.
+ const EMPHASIS_ALTERNATIVES = /^_[^/]+_(?:\/_[^/]+_)+$/;
+@@ -41,6 +41,7 @@ function literalUnderscoreRuns(text: string): Set<number> {
+   if (!text.includes("_")) return literal;
+   for (const match of text.matchAll(PATH_TOKEN)) {
+     const token = match[0];
++    if (token.startsWith("~~")) continue;
+     let bodyEnd = token.length;
+     while (bodyEnd > 0 && ".:?".includes(token[bodyEnd - 1]!)) bodyEnd -= 1;
+     if (EMPHASIS_ALTERNATIVES.test(token.slice(0, bodyEnd))) continue;
 diff --git a/apps/web/src/environments/primary/auth.ts b/apps/web/src/environments/primary/auth.ts
-index 305bca3e4..d11e75f94 100644
+index 8e57580670..223f06c162 100644
 --- a/apps/web/src/environments/primary/auth.ts
 +++ b/apps/web/src/environments/primary/auth.ts
-@@ -21,6 +21,7 @@ import {
- 
- import { PrimaryEnvironmentHttpClient } from "./httpClient";
- import { runPrimaryHttp } from "../../lib/runtime";
+@@ -1,3 +1,4 @@
 +import { stripAppBasePath } from "../../lib/appBasePath";
+ import { thrownErrorMessage } from "@t3tools/client-runtime/errors";
+ import type {
+   AuthBrowserSessionResult,
+@@ -362,7 +363,7 @@ export async function submitServerAuthCredential(credential: string): Promise<vo
  
- const PrimaryEnvironmentRequestOperation = Schema.Literals([
-   "fetch-session-state",
-@@ -434,7 +435,7 @@ export async function resolveInitialServerAuthGateState(): Promise<ServerAuthGat
-   // An explicit pairing link replaces this browser's grant, even when the
-   // current cookie or a cached gate already authenticates it. Keep that intent
-   // after stripping the token, which causes the router to load this gate again.
+ export async function resolveInitialServerAuthGateState(): Promise<ServerAuthGateState> {
+   // Preserve explicit grant replacement across the auth-gate reload triggered by token removal.
 -  if (window.location.pathname.replace(/\/+$/, "") !== "/pair") {
 +  if (stripAppBasePath(window.location.pathname).replace(/\/+$/, "") !== "/pair") {
      explicitPairingRequested = false;
    } else if (peekPairingTokenFromUrl()) {
      explicitPairingRequested = true;
 diff --git a/apps/web/src/hooks/useTheme.ts b/apps/web/src/hooks/useTheme.ts
-index 7a750fd74..0ee380200 100644
+index 2467d89091..a163bc9ae0 100644
 --- a/apps/web/src/hooks/useTheme.ts
 +++ b/apps/web/src/hooks/useTheme.ts
-@@ -2,6 +2,7 @@ import type { DesktopBridge } from "@t3tools/contracts";
- import { safeErrorLogAttributes } from "@t3tools/client-runtime/errors";
- import * as Schema from "effect/Schema";
- import { useCallback, useEffect, useSyncExternalStore } from "react";
+@@ -1,3 +1,4 @@
 +import { browserThemeColor } from "../lib/legacyColor";
- import {
-   applyThemePalette,
-   CUSTOM_THEMES_STORAGE_KEY,
-@@ -301,8 +302,9 @@ export function syncBrowserChromeTheme() {
+ import { pipe } from "effect/Function";
+ import type { DesktopBridge } from "@t3tools/contracts";
+ import { safeErrorLogAttributes } from "@t3tools/client-runtime/errors";
+@@ -286,8 +287,9 @@ export function syncBrowserChromeTheme() {
      getComputedStyle(resolveBrowserChromeSurface()).backgroundColor,
    );
    const fallbackColor = normalizeThemeColor(getComputedStyle(document.body).backgroundColor);
@@ -248,68 +297,55 @@ index 7a750fd74..0ee380200 100644
    document.documentElement.style.backgroundColor = backgroundColor;
    document.body.style.backgroundColor = backgroundColor;
 diff --git a/apps/web/src/hostedPairing.ts b/apps/web/src/hostedPairing.ts
-index 00fcae959..7620f7867 100644
+index 6a0998e6b3..a11e42e85d 100644
 --- a/apps/web/src/hostedPairing.ts
 +++ b/apps/web/src/hostedPairing.ts
-@@ -1,6 +1,7 @@
- import { DEFAULT_HOSTED_APP_URL } from "@t3tools/shared/connectAuth";
+@@ -2,6 +2,8 @@ import { DEFAULT_HOSTED_APP_URL } from "@t3tools/shared/connectAuth";
  
- import { getPairingTokenFromUrl, setPairingTokenOnUrl } from "./pairingUrl";
-+import { appPath, appBasePath } from "./lib/appBasePath";
+ import { getPairingTokenFromUrl, setPairingTokenOnUrl } from "@t3tools/shared/remote";
  
++import { appBasePath, appPath } from "./lib/appBasePath";
++
  export interface HostedPairingRequest {
    readonly host: string;
-@@ -12,6 +13,9 @@ export type HostedAppChannel = "latest" | "nightly";
+   readonly token: string;
+@@ -11,6 +13,9 @@ export interface HostedPairingRequest {
+ export type HostedAppChannel = "latest" | "nightly";
  
- /** The hosted app origin shared links point at. */
  export function configuredHostedAppUrl(): string {
-+  if (import.meta.env.BASE_URL === "./" && typeof window !== "undefined") {
++  if (appBasePath !== "/" && typeof window !== "undefined") {
 +    return new URL(`${appBasePath}/`, window.location.origin).toString();
 +  }
    return import.meta.env.VITE_HOSTED_APP_URL?.trim() || DEFAULT_HOSTED_APP_URL;
  }
  
-@@ -76,7 +80,10 @@ export function buildHostedPairingUrl(input: {
+@@ -73,7 +78,7 @@ export function buildHostedPairingUrl(input: {
    readonly token: string;
    readonly label?: string | null;
  }): string {
 -  const url = new URL("/pair", configuredHostedAppUrl());
-+  const url = new URL(
-+    import.meta.env.BASE_URL === "./" ? appPath("pair") : "/pair",
-+    configuredHostedAppUrl(),
-+  );
++  const url = new URL(appPath("pair"), configuredHostedAppUrl());
    url.searchParams.set("host", input.host);
  
    const label = input.label?.trim();
 diff --git a/apps/web/src/index.css b/apps/web/src/index.css
-index 90f204d20..fe6b6c24b 100644
+index 05541d3970..97fcc4ae01 100644
 --- a/apps/web/src/index.css
 +++ b/apps/web/src/index.css
-@@ -87,6 +87,8 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
+@@ -2649,3 +2649,25 @@ code {
+ .messages-timeline-scroll:focus-visible {
+   outline: none;
  }
- 
- :root {
++
++:root {
 +  --legacy-light: initial;
 +  --legacy-dark: ;
-   --app-scrollbar-width: 6px;
-   --appearance-contrast-base: 100%;
-   --appearance-contrast-boost: 0%;
-@@ -148,6 +150,11 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
-   }
- }
- 
++}
++
 +.dark {
 +  --legacy-light: ;
 +  --legacy-dark: initial;
 +}
-+
- .wco {
-   --workspace-topbar-height: max(40px, env(titlebar-area-height, 52px));
-   --workspace-controls-top: env(titlebar-area-y, 0px);
-@@ -2367,3 +2374,15 @@ code {
-     }
-   }
- }
 +
 +/* Explicit thread actions for devices without a mouse context menu. */
 +.sidebar-touch-actions {
@@ -324,7 +360,7 @@ index 90f204d20..fe6b6c24b 100644
 +}
 diff --git a/apps/web/src/legacyBrowser.test.ts b/apps/web/src/legacyBrowser.test.ts
 new file mode 100644
-index 000000000..631a89a43
+index 0000000000..631a89a433
 --- /dev/null
 +++ b/apps/web/src/legacyBrowser.test.ts
 @@ -0,0 +1,31 @@
@@ -361,10 +397,10 @@ index 000000000..631a89a43
 +});
 diff --git a/apps/web/src/legacyBrowser.ts b/apps/web/src/legacyBrowser.ts
 new file mode 100644
-index 000000000..99891c2f3
+index 0000000000..eb7f0f7d36
 --- /dev/null
 +++ b/apps/web/src/legacyBrowser.ts
-@@ -0,0 +1,24 @@
+@@ -0,0 +1,59 @@
 +import "core-js/actual";
 +
 +import { browserThemeColor } from "./lib/legacyColor";
@@ -372,6 +408,41 @@ index 000000000..99891c2f3
 +
 +// Await this before importing React or any dependency that uses the missing APIs.
 +export async function prepareLegacyBrowser(): Promise<void> {
++  if (typeof AbortSignal.timeout !== "function") {
++    AbortSignal.timeout = (milliseconds) => {
++      const controller = new AbortController();
++      setTimeout(
++        () => controller.abort(new DOMException("The operation timed out.", "TimeoutError")),
++        milliseconds,
++      );
++      return controller.signal;
++    };
++  }
++  if (typeof AbortSignal.any !== "function") {
++    AbortSignal.any = (signals) => {
++      const controller = new AbortController();
++      const listeners = new Map<AbortSignal, () => void>();
++      const abort = (source: AbortSignal) => {
++        for (const [signal, listener] of listeners) signal.removeEventListener("abort", listener);
++        controller.abort(source.reason);
++      };
++      for (const signal of new Set(signals)) {
++        if (signal.aborted) {
++          abort(signal);
++          break;
++        }
++        const listener = () => abort(signal);
++        listeners.set(signal, listener);
++        signal.addEventListener("abort", listener, { once: true });
++      }
++      return controller.signal;
++    };
++  }
++  if (typeof AbortSignal.prototype.throwIfAborted !== "function") {
++    AbortSignal.prototype.throwIfAborted = function () {
++      if (this.aborted) throw this.reason;
++    };
++  }
 +  if (typeof document === "undefined" || !document.implementation) return;
 +  if (!("adoptedStyleSheets" in document)) {
 +    await import("construct-style-sheets-polyfill");
@@ -391,7 +462,7 @@ index 000000000..99891c2f3
 +}
 diff --git a/apps/web/src/lib/appBasePath.test.ts b/apps/web/src/lib/appBasePath.test.ts
 new file mode 100644
-index 000000000..799f51219
+index 0000000000..799f51219f
 --- /dev/null
 +++ b/apps/web/src/lib/appBasePath.test.ts
 @@ -0,0 +1,17 @@
@@ -414,7 +485,7 @@ index 000000000..799f51219
 +});
 diff --git a/apps/web/src/lib/appBasePath.ts b/apps/web/src/lib/appBasePath.ts
 new file mode 100644
-index 000000000..8baa8d82f
+index 0000000000..8baa8d82f6
 --- /dev/null
 +++ b/apps/web/src/lib/appBasePath.ts
 @@ -0,0 +1,17 @@
@@ -435,25 +506,22 @@ index 000000000..8baa8d82f
 +    ? path.slice(appBasePath.length)
 +    : path;
 +}
-diff --git a/apps/web/src/lib/bootError.ts b/apps/web/src/lib/bootError.ts
-index 697c8e9d8..41d669128 100644
---- a/apps/web/src/lib/bootError.ts
-+++ b/apps/web/src/lib/bootError.ts
-@@ -12,7 +12,10 @@ export function showBootError(error: unknown) {
-   message.textContent = "T3 Code could not load.";
-   content.append(message);
+diff --git a/apps/web/src/lib/diffFileContents.ts b/apps/web/src/lib/diffFileContents.ts
+index 7fcd821df7..537d803da8 100644
+--- a/apps/web/src/lib/diffFileContents.ts
++++ b/apps/web/src/lib/diffFileContents.ts
+@@ -45,7 +45,7 @@ type GetPullRequestDiffFileContents<E> = (request: {
  
--  if (import.meta.env.DEV && error instanceof Error) {
-+  if (
-+    (import.meta.env.DEV || import.meta.env.VITE_LEGACY_BROWSER === "1") &&
-+    error instanceof Error
-+  ) {
-     const detail = document.createElement("p");
-     detail.textContent = error.message;
-     content.append(detail);
+ // Mirrors Pierre's splitFileContents so line counts match its hydration.
+ function splitLines(contents: string): ReadonlyArray<string> {
+-  return contents === "" ? [] : contents.split(/(?<=\n)/);
++  return contents === "" ? [] : (contents.match(/[^\n]*\n|[^\n]+$/g) ?? []);
+ }
+ 
+ // Whitespace-insensitive: `git diff -w` prints context lines from only one side.
 diff --git a/apps/web/src/lib/legacyColor.ts b/apps/web/src/lib/legacyColor.ts
 new file mode 100644
-index 000000000..7b092486d
+index 0000000000..7b092486d7
 --- /dev/null
 +++ b/apps/web/src/lib/legacyColor.ts
 @@ -0,0 +1,9 @@
@@ -468,10 +536,10 @@ index 000000000..7b092486d
 +}
 diff --git a/apps/web/src/lib/legacyCss.test.ts b/apps/web/src/lib/legacyCss.test.ts
 new file mode 100644
-index 000000000..c5127f730
+index 0000000000..382a7359ee
 --- /dev/null
 +++ b/apps/web/src/lib/legacyCss.test.ts
-@@ -0,0 +1,36 @@
+@@ -0,0 +1,38 @@
 +import { describe, expect, it } from "vite-plus/test";
 +
 +import { legacyCss } from "../../vite/legacyCss";
@@ -479,7 +547,9 @@ index 000000000..c5127f730
 +
 +describe("Safari 15 CSS output", () => {
 +  it("keeps sidebar rows visible without combined fade masks or unsupported viewport units", () => {
-+    const css = legacyCss(`.sidebar { height: 100svh; mask-image: linear-gradient(black, transparent); -webkit-mask-composite: source-in; }`);
++    const css = legacyCss(
++      `.sidebar { height: 100svh; mask-image: linear-gradient(black, transparent); -webkit-mask-composite: source-in; }`,
++    );
 +    expect(css).not.toContain("mask-image");
 +    expect(css).not.toContain("mask-composite");
 +    expect(css).toContain("height: 100vh");
@@ -510,7 +580,7 @@ index 000000000..c5127f730
 +});
 diff --git a/apps/web/src/lib/legacyCssValue.ts b/apps/web/src/lib/legacyCssValue.ts
 new file mode 100644
-index 000000000..983c4e554
+index 0000000000..983c4e5543
 --- /dev/null
 +++ b/apps/web/src/lib/legacyCssValue.ts
 @@ -0,0 +1,45 @@
@@ -561,7 +631,7 @@ index 000000000..983c4e554
 +}
 diff --git a/apps/web/src/lib/legacyRegex.test.ts b/apps/web/src/lib/legacyRegex.test.ts
 new file mode 100644
-index 000000000..a6dc27230
+index 0000000000..a6dc27230f
 --- /dev/null
 +++ b/apps/web/src/lib/legacyRegex.test.ts
 @@ -0,0 +1,28 @@
@@ -593,8 +663,21 @@ index 000000000..a6dc27230
 +    expect(input.split(splitter)).toEqual(input === "" ? [] : input.split(/(?<=\n)/));
 +  }
 +});
+diff --git a/apps/web/src/markdown-clipboard.ts b/apps/web/src/markdown-clipboard.ts
+index f72ab898fe..f98bcae031 100644
+--- a/apps/web/src/markdown-clipboard.ts
++++ b/apps/web/src/markdown-clipboard.ts
+@@ -249,7 +249,7 @@ function serializeAnchor(anchor: Element, inTableCell: boolean): string {
+   const shown = label.replace(ESCAPED_PUNCTUATION, "$1");
+   if (shown === href) return escapeTablePipes(href, inTableCell);
+   // GFM autolinks a bare address only when it fits this shape.
+-  if (href === `mailto:${shown}` && /^[\w.+-]+@[\w-]+(?:\.[\w-]+)+(?<=[a-zA-Z])$/.test(shown))
++  if (href === `mailto:${shown}` && /^[\w.+-]+@[\w-]+(?:\.[\w-]+)*\.[\w-]*[a-zA-Z]$/.test(shown))
+     return shown;
+   const destination = escapeTablePipes(href.replace(/[\\()]/g, "\\$&"), inTableCell);
+   return `[${label}](${destination})`;
 diff --git a/apps/web/src/router.ts b/apps/web/src/router.ts
-index 4362dd3d7..0f05f2e97 100644
+index e8fd2b71d7..a87dc3c1b3 100644
 --- a/apps/web/src/router.ts
 +++ b/apps/web/src/router.ts
 @@ -1,11 +1,13 @@
@@ -609,45 +692,100 @@ index 4362dd3d7..0f05f2e97 100644
      history,
 +    basepath: appBasePath,
      context: {},
-     // Route components are split chunks (autoCodeSplitting in vite.config);
-     // fetching them on hover/focus intent hides the load from the first
+     defaultPreload: "intent",
+   });
+diff --git a/apps/web/src/terminal-links.ts b/apps/web/src/terminal-links.ts
+index 621ff0fc72..7865f0c90a 100644
+--- a/apps/web/src/terminal-links.ts
++++ b/apps/web/src/terminal-links.ts
+@@ -35,7 +35,7 @@ const POWERSHELL_PROMPT_PATH_PATTERN = /^PS ((?:[A-Za-z]:[\\/]|\\\\|\/)[^>\r\n]*
+ // Parenthesized path segments need a following slash to distinguish compiler locations.
+ // A bare `name.ext` needs `:line:col` or a TS location after it, so prose and `host:port` stay text.
+ const FILE_PATH_PATTERN =
+-  /(?:~[\\/]|\.{1,2}[\\/]|\/|[A-Za-z]:[\\/]|\\\\)[^\s"'`<>]+|(?<![\p{L}\p{M}\p{N}._$+@-])[\p{L}\p{M}\p{N}._$+@-]+(?:(?:[\\/](?:[\p{L}\p{M}\p{N}._$+@-]|\[{1,2}[\p{L}\p{M}\p{N}._-]+\]{1,2}|\([\p{L}\p{M}\p{N}._-]+\)(?=[\\/]))+)+|\.\p{L}[\p{L}\p{M}\p{N}_-]*(?=:\d+:\d|\(\d+,\d+\):\s+(?:error|warning) TS\d+:))(?:(?::\d+){1,2}|\(\d+,\d+\)(?=:\s+(?:error|warning) TS\d+:))?/gu;
++  /(?:~[\\/]|\.{1,2}[\\/]|\/|[A-Za-z]:[\\/]|\\\\)[^\s"'`<>]+|(?<prefix>^|[^\p{L}\p{M}\p{N}._$+@-])[\p{L}\p{M}\p{N}._$+@-]+(?:(?:[\\/](?:[\p{L}\p{M}\p{N}._$+@-]|\[{1,2}[\p{L}\p{M}\p{N}._-]+\]{1,2}|\([\p{L}\p{M}\p{N}._-]+\)(?=[\\/]))+)+|\.\p{L}[\p{L}\p{M}\p{N}_-]*(?=:\d+:\d|\(\d+,\d+\):\s+(?:error|warning) TS\d+:))(?:(?::\d+){1,2}|\(\d+,\d+\)(?=:\s+(?:error|warning) TS\d+:))?/gu;
+ const QUOTED_FILE_PATH_PATTERN =
+   /(["'`])(?<path>(?:~[\\/]|\.{1,2}[\\/]|\/|[A-Za-z]:[\\/]|\\\\|[\p{L}\p{M}\p{N}._ -]+[\\/])[^\r\n]*?|[\p{L}\p{M}\p{N}._ -]+\.[\p{L}\p{M}\p{N}_-]+(?::\d+){0,2})\1(?<position>(?::\d+){0,2})/gu;
+ const TRAILING_PUNCTUATION_PATTERN = /[.,;!?]+$/;
+@@ -46,10 +46,11 @@ const REQUEST_ROUTE_PATTERN =
+   /(?:^|[\s"'`])(?:GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS|CONNECT|TRACE|proxying)\s+["'`]?(?:\/|[A-Za-z0-9_-]+\/)[^\s?]*\?\S*/g;
+ // The tail of `redis://host/0` or `file:///a.mjs` is not a path. One-letter schemes stay drives,
+ // a diff's `+` or `-` may lead, and the lookbehind keeps runs from being rescanned at every suffix.
+-const SCHEME_URL_PATTERN = /(?<![A-Za-z\d+.-])[+-]?[A-Za-z][A-Za-z\d+.-]+:\/\/[^\s"'`<>]+/gu;
++const SCHEME_URL_PATTERN =
++  /(?:^|(?<prefix>[^A-Za-z\d+.-]))[+-]?[A-Za-z][A-Za-z\d+.-]+:\/\/[^\s"'`<>]+/gu;
+ // Nor is the tail of an SCP-style Git remote such as `git@github.com:acme/widgets.git`. Only a
+ // path wholly inside the tail is dropped, so `src/contact@support.vue:12:3` keeps its link.
+-const SCP_REMOTE_PATTERN = /(?<![\w.@-])[\w.-]+@[\w.-]+:[^\s"'`<>]+/gu;
++const SCP_REMOTE_PATTERN = /(?:^|(?<prefix>[^\w.@-]))[\w.-]+@[\w.-]+:[^\s"'`<>]+/gu;
+ 
+ function trimClosingDelimiters(value: string, kind: TerminalLinkKind): string {
+   const output = value.replace(
+@@ -89,9 +90,12 @@ function collectMatches(
+ 
+   for (const rawMatch of line.matchAll(pattern)) {
+     const quotedPath = rawMatch.groups?.path;
++    const prefixLength = rawMatch.groups?.prefix?.length ?? 0;
+     const raw =
+-      quotedPath === undefined ? rawMatch[0] : quotedPath + (rawMatch.groups?.position ?? "");
+-    const start = rawMatch.index + (quotedPath === undefined ? 0 : 1);
++      quotedPath === undefined
++        ? rawMatch[0].slice(prefixLength)
++        : quotedPath + (rawMatch.groups?.position ?? "");
++    const start = rawMatch.index + prefixLength + (quotedPath === undefined ? 0 : 1);
+     if (start < 0 || raw.length === 0) continue;
+ 
+     const trimmed = quotedPath === undefined ? trimClosingDelimiters(raw, kind) : raw;
+@@ -125,10 +129,13 @@ export function extractTerminalLinks(line: string): TerminalLinkMatch[] {
+     : [];
+   const nonPathRanges = Array.from(
+     [...line.matchAll(REQUEST_ROUTE_PATTERN), ...line.matchAll(SCHEME_URL_PATTERN)],
+-    (match) => ({ start: match.index, end: match.index + match[0].length }),
++    (match) => ({
++      start: match.index + (match.groups?.prefix?.length ?? 0),
++      end: match.index + match[0].length,
++    }),
+   );
+   const remoteTails = Array.from(line.matchAll(SCP_REMOTE_PATTERN), (match) => ({
+-    start: match.index + match[0].indexOf(":") + 1,
++    start: match.index + match[0].indexOf(":", match.groups?.prefix?.length ?? 0) + 1,
+     end: match.index + match[0].length,
+   }));
+   const urlMatches = collectMatches(line, "url", URL_PATTERN, promptMatches);
 diff --git a/apps/web/src/themePalette.ts b/apps/web/src/themePalette.ts
-index da9af454c..1226c0098 100644
+index d04e7e1671..d618ec9b90 100644
 --- a/apps/web/src/themePalette.ts
 +++ b/apps/web/src/themePalette.ts
-@@ -2,6 +2,7 @@ import * as Equal from "effect/Equal";
- import * as Schema from "effect/Schema";
- import "culori/css";
- import { converter, parse } from "culori/fn";
+@@ -1,3 +1,4 @@
 +import { browserThemeColor } from "./lib/legacyColor";
- import {
-   BUILT_IN_THEMES,
-   EMBER_THEME,
-@@ -1533,7 +1534,8 @@ export function applyThemeColorPreview(colors: ThemeColors, appearance: ThemeApp
+ import { pipe } from "effect/Function";
+ import { THEME_CSS_MAX_LENGTH, type EnvironmentTheme } from "@t3tools/contracts";
+ import * as Equal from "effect/Equal";
+@@ -1733,7 +1734,8 @@ export function applyThemeColorPreview(
+   root.dataset.themeId = THEME_PREVIEW_ID;
    root.classList.toggle("dark", appearance === "dark");
    for (const [role, value] of Object.entries(colors) as Array<[ThemeColorRole, string]>) {
-     // A half-typed hex keeps the last good value instead of blanking the role.
 -    if (isThemeColor(value)) root.style.setProperty(APP_THEME_VARIABLES[role], value);
 +    if (isThemeColor(value))
 +      root.style.setProperty(APP_THEME_VARIABLES[role], browserThemeColor(value));
    }
- }
- 
-@@ -1551,7 +1553,7 @@ export function applyThemePalette(theme: ThemePreference, appearance?: ThemeAppe
+   applyContextChipVariables(root, colors);
+   applyThemeCss(css);
+@@ -1756,7 +1758,7 @@ export function applyThemePalette(theme: ThemePreference, appearance?: ThemeAppe
      const mode = appearance ?? legacyThemeMode(theme) ?? palette.appearance;
      const colors = getThemeColorsForMode(palette, mode) ?? palette.colors;
      for (const [role, value] of Object.entries(colors) as Array<[ThemeColorRole, string]>) {
 -      root.style.setProperty(APP_THEME_VARIABLES[role], value);
 +      root.style.setProperty(APP_THEME_VARIABLES[role], browserThemeColor(value));
      }
+     applyContextChipVariables(root, colors);
      return;
-   }
 diff --git a/apps/web/src/vite-env.d.ts b/apps/web/src/vite-env.d.ts
-index 31260c8ae..0846d02f7 100644
+index 63f7cca9cb..53d7908b4c 100644
 --- a/apps/web/src/vite-env.d.ts
 +++ b/apps/web/src/vite-env.d.ts
 @@ -3,6 +3,7 @@
- import type { DesktopBridge } from "@t3tools/contracts";
+ import type { DesktopBridge, ThreadId } from "@t3tools/contracts";
  
  interface ImportMetaEnv {
 +  readonly VITE_LEGACY_BROWSER: string;
@@ -655,47 +793,59 @@ index 31260c8ae..0846d02f7 100644
    readonly VITE_WS_URL: string;
    readonly VITE_HOSTED_APP_URL: string;
 diff --git a/apps/web/vite.config.ts b/apps/web/vite.config.ts
-index cf343e26a..e2e8a57c6 100644
+index 073fca7943..c5553d8358 100644
 --- a/apps/web/vite.config.ts
 +++ b/apps/web/vite.config.ts
-@@ -17,9 +17,12 @@ import {
- import { loadRepoEnv } from "../../scripts/lib/public-config";
+@@ -22,11 +22,14 @@ import { loadRepoEnv } from "../../scripts/lib/public-config";
+ import { resolveTaggedSourceVersion } from "../../scripts/lib/tagged-source-version";
  import { thirdPartyLicensesPlugin } from "../../scripts/lib/third-party-licenses";
  import { tailwindPlugins } from "./vite/tailwind";
 +import { legacyCssPlugin } from "./vite/legacyCss";
 +import { legacyRegexPlugin } from "./vite/legacyRegex";
+ import { warmBundledDevPlugin } from "./vite/warmBundledDev";
+ import { formatAppDisplayName, resolveWebAppStageLabel } from "./src/branding.logic";
  
  const repoEnv = loadRepoEnv();
  Object.assign(process.env, repoEnv);
 +const legacyBrowser = process.env.T3CODE_LEGACY_BROWSER === "1";
  
- // Single-origin dev is signalled positively, because it cannot be inferred
- // from the absence of VITE_HTTP_URL/VITE_WS_URL: the runner deletes those keys
-@@ -184,6 +187,7 @@ export default defineConfig(() => {
-         presets: [reactCompilerPreset()],
-       }),
+ // Signal single-origin dev explicitly; loadRepoEnv can restore deleted URL keys from .env.
+ const isSingleOriginDev = process.env.T3CODE_SINGLE_ORIGIN_DEV === "1";
+@@ -335,6 +338,7 @@ export default defineConfig(({ command }) => {
+       react({ compiler: true }),
        tailwindPlugins(bundledDev),
+       warmBundledDevPlugin(),
 +      ...(legacyBrowser ? [legacyRegexPlugin(), legacyCssPlugin()] : []),
+       bundledDev ? bundledDevStableNamesPlugin() : undefined,
      ],
      optimizeDeps: {
-       include: [
-@@ -199,6 +203,7 @@ export default defineConfig(() => {
+@@ -351,6 +355,7 @@ export default defineConfig(({ command }) => {
        ],
      },
      define: {
 +      "import.meta.env.VITE_LEGACY_BROWSER": JSON.stringify(legacyBrowser ? "1" : ""),
-       // In dev mode, tell the web app where the WebSocket server lives
        "import.meta.env.VITE_WS_URL": JSON.stringify(configuredWsUrl ?? ""),
-       // Pinned explicitly rather than left to Vite's automatic VITE_ exposure:
-@@ -227,6 +232,7 @@ export default defineConfig(() => {
-     experimental: {
-       bundledDev,
+       // Override .env URLs with empty values in single-origin dev so clients use window.location.origin.
+       "import.meta.env.VITE_HTTP_URL": JSON.stringify(configuredHttpUrl ?? ""),
+@@ -375,6 +380,17 @@ export default defineConfig(({ command }) => {
+       "import.meta.env.APP_VERSION": JSON.stringify(configuredAppVersion),
      },
-+    worker: { plugins: () => (legacyBrowser ? [legacyRegexPlugin()] : []) },
-     server: {
-       host,
-       port,
-@@ -281,6 +287,7 @@ export default defineConfig(() => {
+     resolve: {
++      ...(legacyBrowser
++        ? {
++            alias: [
++              { find: /^pdfjs-dist$/, replacement: "pdfjs-dist/legacy/build/pdf.mjs" },
++              {
++                find: /^pdfjs-dist\/build\/pdf\.worker\.min\.mjs(?=\?|$)/,
++                replacement: "pdfjs-dist/legacy/build/pdf.worker.min.mjs",
++              },
++            ],
++          }
++        : {}),
+       tsconfigPaths: true,
+       dedupe: ["react", "react-dom"],
+     },
+@@ -423,6 +439,7 @@ export default defineConfig(({ command }) => {
        devSourcemap: buildSourcemap !== false,
      },
      build: {
@@ -703,12 +853,21 @@ index cf343e26a..e2e8a57c6 100644
        outDir: "dist",
        emptyOutDir: true,
        manifest: true,
+@@ -438,7 +455,7 @@ export default defineConfig(({ command }) => {
+         },
+       },
+     },
+-    worker: { format: "es" },
++    worker: { format: "es", plugins: () => (legacyBrowser ? [legacyRegexPlugin()] : []) },
+     test: {
+       projects: [
+         defineProject(unitTestProject),
 diff --git a/apps/web/vite/legacyCss.ts b/apps/web/vite/legacyCss.ts
 new file mode 100644
-index 000000000..9a36716f8
+index 0000000000..f5dcd79db5
 --- /dev/null
 +++ b/apps/web/vite/legacyCss.ts
-@@ -0,0 +1,84 @@
+@@ -0,0 +1,90 @@
 +import postcss from "postcss";
 +import { transform, Features } from "lightningcss";
 +import type { Plugin } from "vite-plus";
@@ -736,7 +895,9 @@ index 000000000..9a36716f8
 +      return;
 +    }
 +    decl.value = legacyCssValue(decl.value);
-+    decl.value = decl.value.replace(/\b([\d.]+)[dsl]vh\b/g, "$1vh").replace(/\b([\d.]+)[dsl]vw\b/g, "$1vw");
++    decl.value = decl.value
++      .replace(/\b([\d.]+)[dsl]vh\b/g, "$1vh")
++      .replace(/\b([\d.]+)[dsl]vw\b/g, "$1vw");
 +  });
 +  if (initial.size) {
 +    const layer = postcss.atRule({ name: "layer", params: "properties" });
@@ -745,7 +906,11 @@ index 000000000..9a36716f8
 +    layer.append(rule);
 +    root.prepend(layer);
 +  }
-+  root.append(postcss.parse("@media (max-width: 767px) {\n  :root { --workspace-controls-top: env(safe-area-inset-top, 0px); }\n  [data-chat-header] {\n    display: flex;\n    align-items: center;\n    height: var(--workspace-topbar-height);\n    min-height: var(--workspace-topbar-height);\n    flex-shrink: 0;\n    padding-left: calc(env(safe-area-inset-left, 0px) + 3.5rem) !important;\n    padding-right: calc(env(safe-area-inset-right, 0px) + 7.5rem) !important;\n  }\n  [data-chat-header] > :not([data-workspace-titlebar-controls]) { min-width: 0; }\n  [data-sidebar-control], [data-workspace-titlebar-controls] {\n    top: env(safe-area-inset-top, 0px) !important;\n    height: var(--workspace-topbar-height);\n    align-items: center;\n  }\n}\n"));
++  root.append(
++    postcss.parse(
++      "@media (max-width: 767px) {\n  :root { --workspace-controls-top: env(safe-area-inset-top, 0px); }\n  [data-chat-header] {\n    display: flex;\n    align-items: center;\n    height: var(--workspace-topbar-height);\n    min-height: var(--workspace-topbar-height);\n    flex-shrink: 0;\n    padding-left: calc(env(safe-area-inset-left, 0px) + 3.5rem) !important;\n    padding-right: calc(env(safe-area-inset-right, 0px) + 7.5rem) !important;\n  }\n  [data-chat-header] > :not([data-workspace-titlebar-controls]) { min-width: 0; }\n  [data-sidebar-control], [data-workspace-titlebar-controls] {\n    top: env(safe-area-inset-top, 0px) !important;\n    height: var(--workspace-topbar-height);\n    align-items: center;\n  }\n}\n",
++    ),
++  );
 +  const result = transform({
 +    filename: "legacy.css",
 +    code: Buffer.from(root.toString()),
@@ -795,10 +960,10 @@ index 000000000..9a36716f8
 +}
 diff --git a/apps/web/vite/legacyRegex.ts b/apps/web/vite/legacyRegex.ts
 new file mode 100644
-index 000000000..bc3e3c4d2
+index 0000000000..f720747b25
 --- /dev/null
 +++ b/apps/web/vite/legacyRegex.ts
-@@ -0,0 +1,26 @@
+@@ -0,0 +1,33 @@
 +import type { Plugin } from "vite-plus";
 +
 +export function legacyRegexSource(code: string, id: string): string {
@@ -810,6 +975,13 @@ index 000000000..bc3e3c4d2
 +    return code.replace(
 +      String.raw`const SPLIT_WITH_NEWLINES = /(?<=\n)/;`,
 +      String.raw`const SPLIT_WITH_NEWLINES = { [Symbol.split](text) { return text.match(/[^\n]*\n|[^\n]+$/g) || []; } };`,
++    );
++  }
++  if (id.includes("@betteroffice/docx")) {
++    // In Unicode mode a matched surrogate is necessarily unpaired.
++    return code.replace(
++      /\/\[\\uD800-\\uDBFF\]\(\?!\[\\uDC00-\\uDFFF\]\)\|\(\?<!\[\\uD800-\\uDBFF\]\)\[\\uDC00-\\uDFFF\]\/u?/g,
++      () => String.raw`/[\uD800-\uDFFF]/u`,
 +    );
 +  }
 +  return code;
@@ -825,41 +997,302 @@ index 000000000..bc3e3c4d2
 +    },
 +  };
 +}
-diff --git a/packages/shared/src/githubMarkdownLinks.ts b/packages/shared/src/githubMarkdownLinks.ts
-index 4fb315021..3191c851a 100644
---- a/packages/shared/src/githubMarkdownLinks.ts
-+++ b/packages/shared/src/githubMarkdownLinks.ts
-@@ -15,7 +15,7 @@ type MarkdownNode = {
+diff --git a/packages/client-runtime/src/composerModelMentions.ts b/packages/client-runtime/src/composerModelMentions.ts
+index 140786d778..68132a62ff 100644
+--- a/packages/client-runtime/src/composerModelMentions.ts
++++ b/packages/client-runtime/src/composerModelMentions.ts
+@@ -58,7 +58,7 @@ export interface ComposerModelMentionOccurrence {
+ }
  
- const parser = unified().use(remarkParse).use(remarkGfm);
- const reference =
--  /(?<![\w/\\])(?:([\w.-]+\/[\w.-]+|[\w-]+)?#([1-9]\d*)|(?:([\w.-]+\/[\w.-]+|[\w-]+)@)?([a-f\d]{7,40})(?![\w])|@([a-z\d](?:[a-z\d-]*[a-z\d])?(?:\/[a-z\d][a-z\d-]*)?))(?![\w])/gi;
-+  /(?:([\w.-]+\/[\w.-]+|[\w-]+)?#([1-9]\d*)|(?:([\w.-]+\/[\w.-]+|[\w-]+)@)?([a-f\d]{7,40})(?![\w])|@([a-z\d](?:[a-z\d-]*[a-z\d])?(?:\/[a-z\d][a-z\d-]*)?))(?![\w])/gi;
+ // Instance ids match ProviderInstanceId; model slugs may contain `/`, as in `opencode/anthropic/opus`.
+-const MODEL_MENTION_PATTERN = /(?<![^\s,(["'])model:([a-zA-Z][a-zA-Z0-9_-]*)\/([^\s,"']+)/gu;
++const MODEL_MENTION_PATTERN = /(?:^|[\s,(["'])model:([a-zA-Z][a-zA-Z0-9_-]*)\/([^\s,"']+)/gu;
+ const SENTENCE_PUNCTUATION = ".;:!?";
+ const CLOSING_BRACKETS: Readonly<Record<string, string>> = { ")": "(", "]": "[" };
  
- /** Link GitHub references in prose without rewriting code, URLs, HTML, or existing links. */
- export function githubMarkdownLinks(markdown: string, pullRequestUrl: string | null): string {
-@@ -53,6 +53,7 @@ export function githubMarkdownLinks(markdown: string, pullRequestUrl: string | n
-       const source = markdown.slice(start, end);
-       for (const match of source.matchAll(reference)) {
-         const [label, issueRepo, number, commitRepo, sha, mention] = match;
-+        if (match.index > 0 && /[\w/\\]/.test(source[match.index - 1]!)) continue;
-         if (sha && !/[a-f]/i.test(sha)) continue;
-         const path = number
-           ? `${repository(issueRepo)}/issues/${number}`
+@@ -96,7 +96,7 @@ export function collectComposerModelMentions(
+     const instanceId = match[1]!;
+     const model = trimModelSlug(match[2]!);
+     if (model.length === 0) continue;
+-    const start = match.index;
++    const start = match.index + (match[0].startsWith("model:") ? 0 : 1);
+     const end = start + "model:".length + instanceId.length + 1 + model.length;
+     occurrences.push({ instanceId, model, source: text.slice(start, end), start, end });
+   }
+diff --git a/packages/client-runtime/src/workspaceBasenameLookup.ts b/packages/client-runtime/src/workspaceBasenameLookup.ts
+index 6698aed52f..7d4e42b0ca 100644
+--- a/packages/client-runtime/src/workspaceBasenameLookup.ts
++++ b/packages/client-runtime/src/workspaceBasenameLookup.ts
+@@ -187,7 +187,7 @@ export async function findAgentDirectoryMatch(
+ }
+ 
+ // A quoted string or a comment is one token, so `cd` inside either is not read as a command.
+-const SHELL_TOKEN = /(?<![^\s;&|()])#[^\n]*|"[^"]*"|'[^']*'|[;&|()\n]|[ \t]+|[^\s;&|()"']+/g;
++const SHELL_TOKEN = /#[^\n]*|"[^"]*"|'[^']*'|[;&|()\n]|[ \t]+|[^\s;&|()"']+/g;
+ const SHELL_NAME = /(?:^|\/)(?:ba|z|da)?sh$/;
+ const CD_OPTION = /^-[LPe@]*$|^--$/;
+ 
+@@ -210,7 +210,14 @@ function cdOperands(script: string): Array<string> {
+     words = [];
+     wordOpen = false;
+   };
+-  for (const [token] of script.matchAll(SHELL_TOKEN)) {
++  const tokens = new RegExp(SHELL_TOKEN);
++  let match: RegExpExecArray | null;
++  while ((match = tokens.exec(script))) {
++    let [token] = match;
++    if (token.startsWith("#") && /[^\s;&|()]/.test(script[match.index - 1] ?? "")) {
++      token = /^[^\s;&|()"']+/.exec(token)![0];
++      tokens.lastIndex = match.index + token.length;
++    }
+     // A here-document's body is data, and where it ends is the shell's to say.
+     if (!/^["'#]/.test(token) && token.includes("<<")) break;
+     if (/^[;&|()\n]/.test(token)) endCommand();
+diff --git a/packages/shared/src/markdownPipeline.ts b/packages/shared/src/markdownPipeline.ts
+index 53b49a0376..f258999dc1 100644
+--- a/packages/shared/src/markdownPipeline.ts
++++ b/packages/shared/src/markdownPipeline.ts
+@@ -780,7 +780,7 @@ export function remarkAssistantInsights(this: Processor) {
+     let indent: string | undefined;
+     let original = 0;
+     let rewritten = 0;
+-    const lines = source.split(/(?<=\n)|(?<=\r)(?!\n)/u).map((line, index) => {
++    const lines = (source.match(/[^\r\n]*(?:\r\n|[\r\n])|[^\r\n]+$/gu) ?? []).map((line, index) => {
+       const value = line.replace(/[\r\n]+$/u, "");
+       const blocked = protectedRanges.some(
+         (range) =>
+diff --git a/packages/shared/src/paletteSearch.ts b/packages/shared/src/paletteSearch.ts
+index a2de064ca4..286db27ff3 100644
+--- a/packages/shared/src/paletteSearch.ts
++++ b/packages/shared/src/paletteSearch.ts
+@@ -493,16 +493,25 @@ export function messageSearchTokens(query: string): {
+  * Matches the query's words side by side as whole words, as typed, whatever
+  * whitespace is between them and ignoring case; null for a single word.
+  */
+-export function messagePhrase(query: string): RegExp | null {
++export function messagePhrase(query: string): Pick<RegExp, "exec"> | null {
+   const { words } = messageSearchTokens(query);
+-  return words.length > 1
+-    ? new RegExp(
+-        `(?<![\\p{L}\\p{N}])${words
+-          .map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+-          .join("\\s+")}(?![\\p{L}\\p{N}])`,
+-        "iu",
+-      )
+-    : null;
++  if (words.length <= 1) return null;
++  const pattern = new RegExp(
++    words.map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s+") +
++      "(?![\\p{L}\\p{N}])",
++    "giu",
++  );
++  return {
++    exec(text) {
++      pattern.lastIndex = 0;
++      for (let match = pattern.exec(text); match; match = pattern.exec(text)) {
++        const before = text.slice(Math.max(0, match.index - 2), match.index);
++        if (!/[\p{L}\p{N}]$/u.test(before)) return match;
++        pattern.lastIndex = match.index + (text.codePointAt(match.index)! > 0xffff ? 2 : 1);
++      }
++      return null;
++    },
++  };
+ }
+ 
+ // Words written together, as typed, rank above the same words apart, as in
+diff --git a/packages/shared/src/textDirection.ts b/packages/shared/src/textDirection.ts
+index 0d4a7d88fd..9b9e1bf612 100644
+--- a/packages/shared/src/textDirection.ts
++++ b/packages/shared/src/textDirection.ts
+@@ -4,7 +4,7 @@ export type TextDirection = "ltr" | "rtl";
+ // supplementary right-to-left blocks.
+ const RTL_LETTER = /[֐-ࣿיִ-﷿ﹰ-﻿\u{10800}-\u{10FFF}\u{1E800}-\u{1EFFF}]/u;
+ const LETTER = /\p{L}/u;
+-const SENTENCE_END = /(?<=[.!?؟])(?<!\b(?:e\.g|i\.e)\.)\s+|\n+/i;
++const SENTENCE_END = /\s+/g;
+ 
+ function majority(
+   units: Iterable<TextDirection | undefined>,
+@@ -41,14 +41,24 @@ function wordDirection(word: string): TextDirection | undefined {
+  */
+ export function textDirection(text: string): TextDirection | undefined {
+   if (!RTL_LETTER.test(text)) return LETTER.test(text) ? "ltr" : undefined;
++  const sentences: string[] = [];
++  let start = 0;
++  for (const match of text.matchAll(SENTENCE_END)) {
++    const before = text.slice(Math.max(0, match.index - 5), match.index);
++    const isSentence = /[.!?؟]$/.test(before) && !/\b(?:e\.g|i\.e)\.$/i.test(before);
++    if (!isSentence && !match[0].includes("\n")) continue;
++    sentences.push(text.slice(start, match.index));
++    start = match.index + match[0].length;
++  }
++  sentences.push(text.slice(start));
+   return majority(
+-    text.split(SENTENCE_END).map((sentence) => majority(sentence.split(/\s+/).map(wordDirection))),
++    sentences.map((sentence) => majority(sentence.split(/\s+/).map(wordDirection))),
+     () => majority(text.split(/\s+/).map(wordDirection)),
+   );
+ }
+ 
+ const MARKDOWN_CODE_OR_URL =
+-  /(`{3,}|~{3,})[\s\S]*?(?:\1|$)|(`{1,2})(?!`)[\s\S]*?(?<!`)\2(?!`)|https?:\/\/\S+/g;
++  /(`{3,}|~{3,})[\s\S]*?(?:\1|$)|(`{1,2})(?!`)(?:[^`]|`+(?!`))*?\2(?!`)|https?:\/\/\S+/g;
+ 
+ export function markdownProseDirection(markdown: string): TextDirection | undefined {
+   return textDirection(markdown.replace(MARKDOWN_CODE_OR_URL, " "));
+diff --git a/packages/shared/src/threadLinks.ts b/packages/shared/src/threadLinks.ts
+index d564e4bb54..a78e443ba3 100644
+--- a/packages/shared/src/threadLinks.ts
++++ b/packages/shared/src/threadLinks.ts
+@@ -24,12 +24,14 @@ const THREAD_LINK_OUTSIDE_CODE = new RegExp(
+     String.raw`\[(?<label>${LABEL})\]\((?:<(?<angleHref>${THREAD_HREF}[^\s<>]+|${HOSTED_LINK})>|(?<href>${THREAD_HREF}[^\s>)]+|${HOSTED_LINK}))\)`,
+     String.raw`\[${LABEL}\]\((?:<[^<>\n]*>|[^\s()]*(?:\([^\s()]*\)[^\s()]*)*)(?:[ \t]+(?:"[^"\n]*"|'[^'\n]*'))?\)`,
+     String.raw`<(?<autolink>${THREAD_HREF}[^\s<>]+|${HOSTED_LINK})>`,
+-    // After a URL character the hosted link is part of a longer URL, such as a redirect target.
+-    String.raw`(?<![A-Za-z0-9%/?#=&@+-])(?<bare>${HOSTED_LINK})(?![\w%/?#-])`,
++    // After a URL character a bare hosted link is part of a longer URL, such as a redirect target.
++    String.raw`(?<bare>${HOSTED_LINK})(?![\w%/?#-])`,
+   ].join("|"),
+   "g",
+ );
+ 
++const HOSTED_LINK_PREFIX_CHARACTER = /[A-Za-z0-9%/?#=&@+-]/;
++
+ const decodeThreadId = Schema.decodeUnknownOption(ThreadId);
+ const decodeEnvironmentId = Schema.decodeUnknownOption(EnvironmentId);
+ 
+@@ -168,6 +170,8 @@ export function threadLinkRefs(
+   // Hermes' matchAll yields matches without `groups`; exec keeps them.
+   const pattern = new RegExp(THREAD_LINK_OUTSIDE_CODE);
+   for (let match = pattern.exec(markdown); match !== null; match = pattern.exec(markdown)) {
++    if (match.groups?.bare && HOSTED_LINK_PREFIX_CHARACTER.test(markdown[match.index - 1] ?? ""))
++      continue;
+     const href =
+       match.groups?.angleHref ?? match.groups?.href ?? match.groups?.autolink ?? match.groups?.bare;
+     const link = href === undefined ? null : parseThreadLinkHref(href);
+@@ -189,6 +193,8 @@ export function replaceThreadLinks(
+     const groups = args.at(-1) as Partial<
+       Record<"angleHref" | "href" | "autolink" | "bare" | "label", string>
+     >;
++    const offset = args.at(-3) as number;
++    if (groups.bare && HOSTED_LINK_PREFIX_CHARACTER.test(markdown[offset - 1] ?? "")) return source;
+     const href = groups.angleHref ?? groups.href ?? groups.autolink ?? groups.bare;
+     const link = href === undefined ? null : parseThreadLinkHref(href);
+     return (link && replace(link, groups.label)) ?? source;
+diff --git a/packages/source-control-github/src/shared/referenceAutolinks.ts b/packages/source-control-github/src/shared/referenceAutolinks.ts
+index 2c9fb18558..0230c976ae 100644
+--- a/packages/source-control-github/src/shared/referenceAutolinks.ts
++++ b/packages/source-control-github/src/shared/referenceAutolinks.ts
+@@ -3,7 +3,7 @@ import type { ReferenceAutolink } from "@t3tools/source-control-core/shared/defi
+ // GitHub's autolinked references: `#12`, `repo#12` and `owner/repo#12`; a SHA of 7 to 40
+ // characters, optionally `repo@` or `owner/repo@` qualified; `@user` and `@org/team`.
+ const REFERENCE =
+-  /(?<![\w./\\-])(?:([\w.-]+\/[\w.-]+|[\w-]+)?#([1-9]\d*)|(?:([\w.-]+\/[\w.-]+|[\w-]+)@)?([a-f\d]{7,40})(?![\w])|@([a-z\d](?:[a-z\d-]*[a-z\d])?(?:\/[a-z\d][a-z\d-]*)?))(?![\w])/giu;
++  /(?<prefix>^|[^\w./\\-])(?:([\w.-]+\/[\w.-]+|[\w-]+)?#([1-9]\d*)|(?:([\w.-]+\/[\w.-]+|[\w-]+)@)?([a-f\d]{7,40})(?![\w])|@([a-z\d](?:[a-z\d-]*[a-z\d])?(?:\/[a-z\d][a-z\d-]*)?))(?![\w])/giu;
+ const CANDIDATE = /[#@]|\b[a-f\d]{7,40}\b/iu;
+ const SHORT_SHA_LENGTH = 7;
+ 
+@@ -24,10 +24,12 @@ export function gitHubReferenceAutolinks(
+     qualifier?.includes("/") ? qualifier : qualifier ? `${qualifier}/${repo}` : `${owner}/${repo}`;
+   const links: ReferenceAutolink[] = [];
+   for (const match of text.matchAll(REFERENCE)) {
+-    const [matched, issueRepo, number, commitRepo, sha, mention] = match;
++    const [full, prefix, issueRepo, number, commitRepo, sha, mention] = match;
++    const prefixLength = prefix?.length ?? 0;
++    const matched = full.slice(prefixLength);
+     if (number) {
+       links.push({
+-        index: match.index,
++        index: match.index + prefixLength,
+         text: matched,
+         label: matched,
+         url: `${url.origin}/${repository(issueRepo)}/issues/${number}`,
+@@ -37,7 +39,7 @@ export function gitHubReferenceAutolinks(
+       // A run of digits is a number far more often than a SHA.
+       if (!/[a-f]/iu.test(sha)) continue;
+       links.push({
+-        index: match.index,
++        index: match.index + prefixLength,
+         text: matched,
+         label: `${commitRepo ? `${commitRepo}@` : ""}${sha.slice(0, SHORT_SHA_LENGTH)}`,
+         url: `${url.origin}/${repository(commitRepo)}/commit/${sha}`,
+@@ -46,7 +48,7 @@ export function gitHubReferenceAutolinks(
+     } else if (mention) {
+       const [organization, team] = mention.split("/");
+       links.push({
+-        index: match.index,
++        index: match.index + prefixLength,
+         text: matched,
+         label: matched,
+         url: `${url.origin}/${team ? `orgs/${organization}/teams/${team}` : mention}`,
+diff --git a/packages/source-control-gitlab/src/shared/referenceAutolinks.ts b/packages/source-control-gitlab/src/shared/referenceAutolinks.ts
+index 189e9f7085..bdba70231d 100644
+--- a/packages/source-control-gitlab/src/shared/referenceAutolinks.ts
++++ b/packages/source-control-gitlab/src/shared/referenceAutolinks.ts
+@@ -6,7 +6,7 @@ import type { ReferenceAutolink } from "@t3tools/source-control-core/shared/defi
+ // optionally qualified the same way with `@`; `@user` and `@group/subgroup`.
+ const PROJECT = String.raw`[\w.-]+(?:\/[\w.-]+)*`;
+ const REFERENCE = new RegExp(
+-  String.raw`(?<![\w./\\-])(?:(${PROJECT})?([#!])([1-9]\d*)|(?:(${PROJECT})@)?([a-f\d]{7,40})(?![\w])|@([\w](?:[\w.-]*[\w])?(?:\/[\w](?:[\w.-]*[\w])?)*)|GL-([1-9]\d*)|\[issue:(?:(${PROJECT})\/)?([1-9]\d*)\])(?![\w])`,
++  String.raw`(?<prefix>^|[^\w./\\-])(?:(${PROJECT})?([#!])([1-9]\d*)|(?:(${PROJECT})@)?([a-f\d]{7,40})(?![\w])|@([\w](?:[\w.-]*[\w])?(?:\/[\w](?:[\w.-]*[\w])?)*)|GL-([1-9]\d*)|\[issue:(?:(${PROJECT})\/)?([1-9]\d*)\])(?![\w])`,
+   "giu",
+ );
+ const CANDIDATE = /[#!@]|\bGL-\d|\[issue:|\b[a-f\d]{7,40}\b/iu;
+@@ -32,7 +32,8 @@ export function gitLabReferenceAutolinks(
+   const links: ReferenceAutolink[] = [];
+   for (const match of text.matchAll(REFERENCE)) {
+     const [
+-      matched,
++      full,
++      prefix,
+       referenceProject,
+       sigil,
+       number,
+@@ -43,9 +44,11 @@ export function gitLabReferenceAutolinks(
+       bracketProject,
+       bracketIssue,
+     ] = match;
++    const prefixLength = prefix?.length ?? 0;
++    const matched = full.slice(prefixLength);
+     if (number && (sigil === "#" || sigil === "!")) {
+       links.push({
+-        index: match.index,
++        index: match.index + prefixLength,
+         text: matched,
+         label: matched,
+         url: `${url.origin}/${project(referenceProject)}/-/${ROUTE[sigil]}/${number}`,
+@@ -53,7 +56,7 @@ export function gitLabReferenceAutolinks(
+       });
+     } else if (bracketIssue || (prefixedIssue && matched.startsWith("GL-"))) {
+       links.push({
+-        index: match.index,
++        index: match.index + prefixLength,
+         text: matched,
+         label: matched,
+         url: `${url.origin}/${project(bracketProject)}/-/issues/${bracketIssue ?? prefixedIssue}`,
+@@ -63,7 +66,7 @@ export function gitLabReferenceAutolinks(
+       // A run of digits is a number far more often than a SHA.
+       if (!/[a-f]/iu.test(sha)) continue;
+       links.push({
+-        index: match.index,
++        index: match.index + prefixLength,
+         text: matched,
+         label: `${commitProject ? `${commitProject}@` : ""}${sha.slice(0, SHORT_SHA_LENGTH)}`,
+         url: `${url.origin}/${project(commitProject)}/-/commit/${sha}`,
+@@ -71,7 +74,7 @@ export function gitLabReferenceAutolinks(
+       });
+     } else if (mention && mention.toLowerCase() !== "all") {
+       links.push({
+-        index: match.index,
++        index: match.index + prefixLength,
+         text: matched,
+         label: matched,
+         url: `${url.origin}/${mention}`,
 diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
-index fdb699e66..0e4626f71 100644
+index 54437f3d04..67f041f8fd 100644
 --- a/pnpm-lock.yaml
 +++ b/pnpm-lock.yaml
-@@ -586,7 +586,7 @@ importers:
-         version: 4.0.2(patch_hash=595b7d26fb635caba9c3d39fcb189bb78a000192f8d3b60ead7174b310d1ade9)(@types/node@24.12.4)(@vitest/ui@5.0.1)(bufferutil@4.1.0)(effect@4.0.2(patch_hash=ec61ee307eaec3e17f757e0e6a16296ea4b7a8c3188df0c6ec5e66301fd78688))(esbuild@0.28.2)(jiti@2.7.0)(jsdom@30.1.0(@noble/hashes@1.8.0))(msw@2.12.11(@types/node@24.12.4)(typescript@7.0.2))(terser@5.48.0)(typescript@7.0.2)(unrun@0.2.39)(utf-8-validate@6.0.6)(yaml@2.9.0)
-       '@pierre/trees':
-         specifier: 1.0.0-beta.6
--        version: 1.0.0-beta.6(@pierre/theme@2.0.0)(@shikijs/themes@4.2.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(shiki@4.2.0)
-+        version: 1.0.0-beta.6(@pierre/theme@1.1.0)(@shikijs/themes@4.2.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(shiki@4.2.0)
-       '@types/mdast':
-         specifier: ^4.0.4
-         version: 4.0.4
-@@ -873,6 +873,12 @@ importers:
+@@ -1184,6 +1184,12 @@ importers:
        class-variance-authority:
          specifier: ^0.7.1
          version: 0.7.1
@@ -872,23 +1305,37 @@ index fdb699e66..0e4626f71 100644
        culori:
          specifier: ^4.0.2
          version: 4.0.2
-@@ -985,6 +991,15 @@ importers:
-       jsdom:
-         specifier: ^30.0.1
-         version: 30.1.0(@noble/hashes@1.8.0)
-+      lightningcss:
-+        specifier: 1.33.0
-+        version: 1.33.0
-+      postcss:
-+        specifier: 8.5.28
-+        version: 8.5.28
+@@ -1238,6 +1244,9 @@ importers:
+       pele:
+         specifier: 'catalog:'
+         version: 1.8.0
 +      postcss-value-parser:
 +        specifier: 4.2.0
 +        version: 4.2.0
-       react-test-renderer:
-         specifier: 19.2.6
-         version: 19.2.6(react@19.2.6)
-@@ -7729,6 +7744,9 @@ packages:
+       react:
+         specifier: 'catalog:'
+         version: 19.3.0
+@@ -1338,6 +1347,9 @@ importers:
+       gt:
+         specifier: 2.27.0
+         version: 2.27.0(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1)
++      lightningcss:
++        specifier: 1.33.0
++        version: 1.33.0
+       micromark-util-types:
+         specifier: 'catalog:'
+         version: 2.0.2
+@@ -1347,6 +1359,9 @@ importers:
+       playwright:
+         specifier: 1.64.1
+         version: 1.64.1
++      postcss:
++        specifier: 8.5.28
++        version: 8.5.28
+       tailwindcss:
+         specifier: 4.3.3
+         version: 4.3.3
+@@ -8535,6 +8550,9 @@ packages:
      resolution: {integrity: sha512-ZqRXc+tZukToSNmh5C2iWMSoV3X1YUcPbqEM4DkEG5tNQXrQUZCNVGGv3IuicnkMtPfGf3Xtp8WCXs295iQ1pQ==}
      engines: {node: '>= 0.10.0'}
  
@@ -898,7 +1345,7 @@ index fdb699e66..0e4626f71 100644
    content-disposition@1.1.0:
      resolution: {integrity: sha512-5jRCH9Z/+DRP7rkvY83B+yGIGX96OYdJmzngqnw2SBSxqCFPd0w2km3s5iawpGX8krnwSGmF0FW5Nhr0Hfai3g==}
      engines: {node: '>=18'}
-@@ -7772,6 +7790,9 @@ packages:
+@@ -8574,6 +8592,9 @@ packages:
    core-js@3.47.0:
      resolution: {integrity: sha512-c3Q2VVkGAUyupsjRnaNX6u8Dq2vAdzm9iuPj5FW0fRxzlxgq9Q39MDq10IvmQSpLgHQNyQzQmOo6bgGHmH3NNg==}
  
@@ -908,90 +1355,21 @@ index fdb699e66..0e4626f71 100644
    core-util-is@1.0.2:
      resolution: {integrity: sha512-3lqz5YjWTYnW6dlDa5TLaTCcShfar1e40rmcJVwCBJC6mWlFuj0eCHIElmG1g5kyuJ/GD+8Wn4FFCcz4gJPfaQ==}
  
-@@ -10616,6 +10637,9 @@ packages:
-   points-on-path@0.2.1:
-     resolution: {integrity: sha512-25ClnWWuw7JbWZcgqY/gJ4FQWadKxGWk+3kR/7kD0tCaDtPPMj7oHu2ToLaVhfpnHrZzYby2w6tUA0eOIuUg8g==}
+@@ -11382,6 +11403,13 @@ packages:
+     resolution: {integrity: sha512-LKWqWJRhstyYo9pGvgor/ivk2w94eSjE3RGVuzLGlr3NmD8bf7RcYGze1mNdEHRP6TRP6rMuDHk5t44hnTRyow==}
+     engines: {node: '>=14.19.0'}
  
 +  postcss-value-parser@4.2.0:
 +    resolution: {integrity: sha512-1NNCs6uurfkVbeXG4S8JFT9t19m45ICnif8zWLd5oPSZ50QnwMfK+H3jv408d4jw/7Bttv5axS5IiHoLaVNHeQ==}
 +
-   postcss@8.5.28:
-     resolution: {integrity: sha512-RRuzqDtt5Y9h3quz5hWhK+TPnsmVs6WwSU6LkJMeY4HstUEDuYTG8UJSdawMRzmzAtV+KEoG8N3Qg2qLy5vM/A==}
-     engines: {node: ^10 || ^12 || >=14}
-@@ -15823,6 +15847,14 @@ snapshots:
- 
-   '@pierre/theme@2.0.0': {}
- 
-+  '@pierre/theming@1.0.0(@pierre/theme@1.1.0)(@shikijs/themes@4.2.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(shiki@4.2.0)':
-+    optionalDependencies:
-+      '@pierre/theme': 1.1.0
-+      '@shikijs/themes': 4.2.0
-+      react: 19.3.0
-+      react-dom: 19.3.0(react@19.3.0)
-+      shiki: 4.2.0
++  postcss@8.5.28:
++    resolution: {integrity: sha512-RRuzqDtt5Y9h3quz5hWhK+TPnsmVs6WwSU6LkJMeY4HstUEDuYTG8UJSdawMRzmzAtV+KEoG8N3Qg2qLy5vM/A==}
++    engines: {node: ^10 || ^12 || >=14}
 +
-   '@pierre/theming@1.0.0(@pierre/theme@1.1.0)(@shikijs/themes@4.3.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(shiki@4.2.0)':
-     optionalDependencies:
-       '@pierre/theme': 1.1.0
-@@ -15831,14 +15863,6 @@ snapshots:
-       react-dom: 19.2.6(react@19.2.6)
-       shiki: 4.2.0
- 
--  '@pierre/theming@1.0.0(@pierre/theme@2.0.0)(@shikijs/themes@4.2.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(shiki@4.2.0)':
--    optionalDependencies:
--      '@pierre/theme': 2.0.0
--      '@shikijs/themes': 4.2.0
--      react: 19.3.0
--      react-dom: 19.3.0(react@19.3.0)
--      shiki: 4.2.0
--
-   '@pierre/theming@1.0.1(@pierre/theme@2.0.0)(@shikijs/themes@4.2.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(shiki@4.2.0)':
-     optionalDependencies:
-       '@pierre/theme': 2.0.0
-@@ -15863,25 +15887,25 @@ snapshots:
-       react-dom: 19.3.0(react@19.3.0)
-       shiki: 4.2.0
- 
--  '@pierre/trees@1.0.0-beta.6(@pierre/theme@1.1.0)(@shikijs/themes@4.3.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(shiki@4.2.0)':
-+  '@pierre/trees@1.0.0-beta.6(@pierre/theme@1.1.0)(@shikijs/themes@4.2.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(shiki@4.2.0)':
-     dependencies:
--      '@pierre/theming': 1.0.0(@pierre/theme@1.1.0)(@shikijs/themes@4.3.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(shiki@4.2.0)
-+      '@pierre/theming': 1.0.0(@pierre/theme@1.1.0)(@shikijs/themes@4.2.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(shiki@4.2.0)
-       preact: 11.0.0-beta.0
-       preact-render-to-string: 6.6.5(preact@11.0.0-beta.0)
--      react: 19.2.6
--      react-dom: 19.2.6(react@19.2.6)
-+      react: 19.3.0
-+      react-dom: 19.3.0(react@19.3.0)
-     transitivePeerDependencies:
-       - '@pierre/theme'
-       - '@shikijs/themes'
-       - shiki
- 
--  '@pierre/trees@1.0.0-beta.6(@pierre/theme@2.0.0)(@shikijs/themes@4.2.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(shiki@4.2.0)':
-+  '@pierre/trees@1.0.0-beta.6(@pierre/theme@1.1.0)(@shikijs/themes@4.3.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(shiki@4.2.0)':
-     dependencies:
--      '@pierre/theming': 1.0.0(@pierre/theme@2.0.0)(@shikijs/themes@4.2.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(shiki@4.2.0)
-+      '@pierre/theming': 1.0.0(@pierre/theme@1.1.0)(@shikijs/themes@4.3.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(shiki@4.2.0)
-       preact: 11.0.0-beta.0
-       preact-render-to-string: 6.6.5(preact@11.0.0-beta.0)
--      react: 19.3.0
--      react-dom: 19.3.0(react@19.3.0)
-+      react: 19.2.6
-+      react-dom: 19.2.6(react@19.2.6)
-     transitivePeerDependencies:
-       - '@pierre/theme'
-       - '@shikijs/themes'
-@@ -16307,7 +16331,7 @@ snapshots:
-   '@shikijs/types@4.2.0':
-     dependencies:
-       '@shikijs/vscode-textmate': 10.0.2
--      '@types/hast': 3.0.4
-+      '@types/hast': 3.0.5
- 
-   '@shikijs/types@4.3.0':
-     dependencies:
-@@ -18352,6 +18376,8 @@ snapshots:
+   postcss@8.5.30:
+     resolution: {integrity: sha512-zkd+e9S1AQHhmaBKye9zlFHWjOwVgqXl1q3ECYy8561K7qxR2cREf/STLskulBFd78k6AOFeA+ff1TtEzk9bAA==}
+     engines: {node: ^10 || ^12 || >=14}
+@@ -18740,6 +18768,8 @@ snapshots:
      transitivePeerDependencies:
        - supports-color
  
@@ -1000,7 +1378,7 @@ index fdb699e66..0e4626f71 100644
    content-disposition@1.1.0: {}
  
    content-type@1.0.5: {}
-@@ -18379,6 +18405,8 @@ snapshots:
+@@ -18764,6 +18794,8 @@ snapshots:
  
    core-js@3.47.0: {}
  
@@ -1009,43 +1387,18 @@ index fdb699e66..0e4626f71 100644
    core-util-is@1.0.2: {}
  
    cors@2.8.6:
-@@ -19589,10 +19617,6 @@ snapshots:
-     dependencies:
-       walk-up-path: 4.0.0
+@@ -22282,6 +22314,14 @@ snapshots:
  
--  fdir@6.5.0(picomatch@4.0.4):
--    optionalDependencies:
--      picomatch: 4.0.4
--
-   fdir@6.5.0(picomatch@4.0.7):
-     optionalDependencies:
-       picomatch: 4.0.7
-@@ -21790,6 +21814,8 @@ snapshots:
-       path-data-parser: 0.1.0
-       points-on-curve: 0.2.0
+   pngjs@7.0.0: {}
  
 +  postcss-value-parser@4.2.0: {}
 +
-   postcss@8.5.28:
++  postcss@8.5.28:
++    dependencies:
++      nanoid: 3.3.20
++      picocolors: 1.1.1
++      source-map-js: 1.2.2
++
+   postcss@8.5.30:
      dependencies:
-       nanoid: 3.3.19
-@@ -22696,7 +22722,7 @@ snapshots:
-       '@shikijs/themes': 4.2.0
-       '@shikijs/types': 4.2.0
-       '@shikijs/vscode-textmate': 10.0.2
--      '@types/hast': 3.0.4
-+      '@types/hast': 3.0.5
- 
-   should-equal@2.0.0:
-     dependencies:
-@@ -23044,8 +23070,8 @@ snapshots:
- 
-   tinyglobby@0.2.17:
-     dependencies:
--      fdir: 6.5.0(picomatch@4.0.4)
--      picomatch: 4.0.4
-+      fdir: 6.5.0(picomatch@4.0.7)
-+      picomatch: 4.0.7
- 
-   tinypool@2.1.2: {}
- 
+       nanoid: 3.3.20

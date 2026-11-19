@@ -1,0 +1,1 @@
+import{c as e}from"./legacyColor-DJMcM4Vu.js";import{t}from"./react-Co0EIINb.js";var n=e(t(),1),r=n.createContext(void 0);function i(){return n.useContext(r)}export{i as t};

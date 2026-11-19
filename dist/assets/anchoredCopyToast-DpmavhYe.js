@@ -1,0 +1,1 @@
+import{c as e,n as t}from"./messages-DXttClRd.js";import{Zl as n}from"./utils-CseoLr1m.js";import{r}from"./toast-CyUMsaJH.js";function i(e,t=e){return n(t)?e.replaceAll(`/`,`\\`):e}var a=1e3;function o(n,i){n.current&&r.add({type:`error`,positionerProps:{anchor:n.current},title:t(e(`Failed to copy`)),description:i.message})}export{o as n,i as r,a as t};
