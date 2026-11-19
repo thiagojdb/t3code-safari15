@@ -1,1 +1,0 @@
-import{c as e}from"./legacyColor-DJMcM4Vu.js";import{n as t,t as n}from"./jsx-runtime-DacOblfc.js";import{a as r}from"./SettingsPanels-DejRi00Z.js";var i=t(),a=e(n());function o(){let e=(0,i.c)(1),t;return e[0]===Symbol.for(`react.memo_cache_sentinel`)?(t=(0,a.jsx)(r,{}),e[0]=t):t=e[0],t}export{o as component};

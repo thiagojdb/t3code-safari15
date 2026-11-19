@@ -1,0 +1,1 @@
+import{t as e}from"./IntegrationsSettings-BojDZgl7.js";var t=e;export{t as component};

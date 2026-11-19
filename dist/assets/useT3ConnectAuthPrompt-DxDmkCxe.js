@@ -1,0 +1,1 @@
+import{n as e}from"./jsx-runtime-DacOblfc.js";import{mi as t}from"./utils-CESgD74N.js";import{n,s as r,t as i}from"./authRedirect-BTpEOhvG.js";var a=e();function o(){let e=(0,a.c)(2),o=r(),s;return e[0]===o?s=e[1]:(s={openAuthPrompt:()=>{o.status===`error`?n():o.openSignIn(i(window.location.href,t))}},e[0]=o,e[1]=s),s}export{o as t};

@@ -171,7 +171,7 @@ index e0a1241784..cb586e792d 100644
            {...setting("update-track")}
            description={gt("Switches the hosted app release channel.")}
 diff --git a/apps/web/src/components/sidebar/SidebarThreadRow.tsx b/apps/web/src/components/sidebar/SidebarThreadRow.tsx
-index 3e1695e63f..12badc7760 100644
+index 3e1695e63f..5b320e1ef1 100644
 --- a/apps/web/src/components/sidebar/SidebarThreadRow.tsx
 +++ b/apps/web/src/components/sidebar/SidebarThreadRow.tsx
 @@ -47,6 +47,7 @@ import {
@@ -182,7 +182,17 @@ index 3e1695e63f..12badc7760 100644
    GitBranchIcon,
    MessageCircleQuestionIcon,
    PinIcon,
-@@ -897,6 +898,24 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
+@@ -208,6 +209,9 @@ function SidebarProviderStack(props: {
+   thread: SidebarThreadSummary;
+   providerEntryByInstanceId: ReadonlyMap<string, SidebarProviderEntry>;
+ }) {
++  // Keep this render out of the compiler for Safari 15.6 compatibility.
++  "use no memo";
++
+   const stack = resolveThreadProviderStack(props.thread);
+   const currentInstanceId = stack[stack.length - 1]!;
+   const currentEntry = props.providerEntryByInstanceId.get(currentInstanceId) ?? null;
+@@ -897,6 +901,24 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
      event.preventDefault();
      onContextMenu(threadRef, { x: event.clientX, y: event.clientY }, contextMenuSourceOf(event));
    };
@@ -207,7 +217,7 @@ index 3e1695e63f..12badc7760 100644
    const handleKeyDown = (event: ReactKeyboardEvent) => {
      if (event.target !== event.currentTarget) return;
      if (
-@@ -1387,6 +1406,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
+@@ -1387,6 +1409,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                {pinIndicator}
                {multiline ? null : terminalStatusIcon}
                {multiline ? null : issueBadge}
@@ -215,7 +225,7 @@ index 3e1695e63f..12badc7760 100644
                {isRegeneratingTitle ? (
                  <span role="status" className="sr-only">
                    <T>Regenerating title</T>
-@@ -1588,6 +1608,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
+@@ -1588,6 +1611,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                ) : (
                  <span className="flex-1" />
                )}
@@ -663,6 +673,86 @@ index 0000000000..a6dc27230f
 +    expect(input.split(splitter)).toEqual(input === "" ? [] : input.split(/(?<=\n)/));
 +  }
 +});
+diff --git a/apps/web/src/lib/routeErrorReport.test.ts b/apps/web/src/lib/routeErrorReport.test.ts
+new file mode 100644
+index 0000000000..cb0f031185
+--- /dev/null
++++ b/apps/web/src/lib/routeErrorReport.test.ts
+@@ -0,0 +1,24 @@
++import { expect, it } from "vite-plus/test";
++
++import { buildRouteErrorReport } from "./routeErrorReport";
++
++const context = { appLabel: "T3 Code Nightly", pathname: "/", time: "2026-11-19T23:28:03.600Z" };
++
++it("includes the error message when WebKit supplies only stack frames, including for a cause", () => {
++  const cause = new TypeError("provider lookup failed");
++  cause.stack = "lookup@/assets/main.js:12:522000";
++  const error = new ReferenceError("sidebar render failed", { cause });
++  error.stack = "@/assets/main.js:12:521923";
++
++  const report = buildRouteErrorReport(error, context);
++  expect(report).toContain("Path: /");
++  expect(report).toContain("ReferenceError: sidebar render failed\n@/assets/main.js:12:521923");
++  expect(report).toContain("Caused by:\nTypeError: provider lookup failed\nlookup@/assets/main.js");
++});
++
++it("does not repeat the message when it is already in the V8 stack", () => {
++  const error = new Error("sidebar render failed");
++  error.stack = "Error: sidebar render failed\n    at render (/assets/main.js:12:6)";
++
++  expect(buildRouteErrorReport(error, context).match(/sidebar render failed/g)).toHaveLength(1);
++});
+diff --git a/apps/web/src/lib/routeErrorReport.ts b/apps/web/src/lib/routeErrorReport.ts
+new file mode 100644
+index 0000000000..cdea1414b2
+--- /dev/null
++++ b/apps/web/src/lib/routeErrorReport.ts
+@@ -0,0 +1,44 @@
++function errorDetails(error: unknown): string {
++  if (error instanceof Error) {
++    const heading = error.message ? `${error.name}: ${error.message}` : error.name;
++    const stack = typeof error.stack === "string" ? error.stack : "";
++    // WebKit stacks can contain frames only. Keep the error itself in the copied report.
++    if (!stack || stack === heading) return heading;
++    return stack.startsWith(`${heading}\n`) ? stack : `${heading}\n${stack}`;
++  }
++
++  if (typeof error === "string") {
++    return error;
++  }
++
++  try {
++    return JSON.stringify(error, null, 2);
++  } catch {
++    // oxlint-disable-next-line t3code/no-untranslated-copy -- diagnostic text for bug reports
++    return "No additional error details are available.";
++  }
++}
++
++const MAX_ERROR_CAUSE_DEPTH = 5;
++
++// Use only pathname to keep query tokens off the clipboard.
++export function buildRouteErrorReport(
++  error: unknown,
++  {
++    appLabel,
++    pathname,
++    time = new Date().toISOString(),
++  }: {
++    appLabel: string;
++    pathname: string;
++    time?: string;
++  },
++): string {
++  const lines = [appLabel, `Path: ${pathname}`, `Time: ${time}`, "", errorDetails(error)];
++  let cause = error instanceof Error ? error.cause : undefined;
++  for (let depth = 0; cause !== undefined && depth < MAX_ERROR_CAUSE_DEPTH; depth += 1) {
++    lines.push("", "Caused by:", errorDetails(cause));
++    cause = cause instanceof Error ? cause.cause : undefined;
++  }
++  return lines.join("\n");
++}
 diff --git a/apps/web/src/markdown-clipboard.ts b/apps/web/src/markdown-clipboard.ts
 index f72ab898fe..f98bcae031 100644
 --- a/apps/web/src/markdown-clipboard.ts
@@ -694,6 +784,73 @@ index e8fd2b71d7..a87dc3c1b3 100644
      context: {},
      defaultPreload: "intent",
    });
+diff --git a/apps/web/src/routes/__root.tsx b/apps/web/src/routes/__root.tsx
+index 3cbef77306..ec0a56877b 100644
+--- a/apps/web/src/routes/__root.tsx
++++ b/apps/web/src/routes/__root.tsx
+@@ -60,6 +60,7 @@ import { readProject } from "../state/entities";
+ 
+ import { getDesktopSnapShotBridge } from "../lib/desktopSnapShot";
+ import { isChunkLoadError } from "../lib/chunkReloadGuard";
++import { buildRouteErrorReport } from "../lib/routeErrorReport";
+ import { shouldResumeSnapShotSetupOnStartup } from "../lib/snapShotSetupResume";
+ 
+ export const Route = createRootRoute({
+@@ -249,7 +250,10 @@ function RootRouteErrorView({ error }: ErrorComponentProps) {
+   const message = errorMessage(error) ?? gt("An unexpected router error occurred.");
+   // Router pathname rather than window.location: desktop uses hash history, where the window path is always "/".
+   const pathname = useLocation({ select: (location) => location.pathname });
+-  const report = errorReport(error, pathname);
++  const report = buildRouteErrorReport(error, {
++    appLabel: `${APP_DISPLAY_NAME} ${APP_VERSION}`,
++    pathname,
++  });
+ 
+   return (
+     <StandalonePage>
+@@ -312,42 +316,6 @@ function errorMessage(error: unknown): string | null {
+   return null;
+ }
+ 
+-function errorDetails(error: unknown): string {
+-  if (error instanceof Error) {
+-    return error.stack ?? error.message;
+-  }
+-
+-  if (typeof error === "string") {
+-    return error;
+-  }
+-
+-  try {
+-    return JSON.stringify(error, null, 2);
+-  } catch {
+-    // oxlint-disable-next-line t3code/no-untranslated-copy -- error report pasted into bug reports
+-    return "No additional error details are available.";
+-  }
+-}
+-
+-const MAX_ERROR_CAUSE_DEPTH = 5;
+-
+-// Use only pathname to keep query tokens off the clipboard.
+-function errorReport(error: unknown, pathname: string): string {
+-  const lines = [
+-    `${APP_DISPLAY_NAME} ${APP_VERSION}`,
+-    `Path: ${pathname}`,
+-    `Time: ${new Date().toISOString()}`,
+-    "",
+-    errorDetails(error),
+-  ];
+-  let cause = error instanceof Error ? error.cause : undefined;
+-  for (let depth = 0; cause !== undefined && depth < MAX_ERROR_CAUSE_DEPTH; depth += 1) {
+-    lines.push("", "Caused by:", errorDetails(cause));
+-    cause = cause instanceof Error ? cause.cause : undefined;
+-  }
+-  return lines.join("\n");
+-}
+-
+ function EventRouter({
+   skipInitialBootstrapNavigation,
+ }: {
 diff --git a/apps/web/src/terminal-links.ts b/apps/web/src/terminal-links.ts
 index 621ff0fc72..7865f0c90a 100644
 --- a/apps/web/src/terminal-links.ts
