@@ -1,0 +1,1 @@
+import{n as e}from"./IntegrationsSettings-CgeZzlcd.js";var t=e;export{t as component};

@@ -107,6 +107,27 @@ index b6f422c5d6..e8d160cb7b 100644
 +  .then(() => import("./main"))
 +  .then(({ startup }) => startup)
 +  .catch(showBootError);
+diff --git a/apps/web/src/components/auth/PairingRouteSurface.tsx b/apps/web/src/components/auth/PairingRouteSurface.tsx
+index 57a5e79241..81dec9493f 100644
+--- a/apps/web/src/components/auth/PairingRouteSurface.tsx
++++ b/apps/web/src/components/auth/PairingRouteSurface.tsx
+@@ -11,6 +11,7 @@ import {
+   submitServerAuthCredential,
+ } from "../../environments/primary";
+ import { readHostedPairingRequest } from "../../hostedPairing";
++import { appPath } from "../../lib/appBasePath";
+ import { Button } from "../ui/button";
+ import { Input } from "../ui/input";
+ import { StandalonePage, StandalonePageHeader } from "../ui/standalone-page";
+@@ -267,7 +268,7 @@ export function HostedPairingRouteSurface() {
+           </Button>
+         ) : null}
+         {status === "paired" ? (
+-          <Button size="sm" variant="outline" onClick={() => (window.location.href = "/")}>
++          <Button size="sm" variant="outline" onClick={() => window.location.assign(appPath(""))}>
+             <T>Open app</T>
+           </Button>
+         ) : null}
 diff --git a/apps/web/src/components/chat/composerPromptHistory.ts b/apps/web/src/components/chat/composerPromptHistory.ts
 index 65244d9259..6240f20c0f 100644
 --- a/apps/web/src/components/chat/composerPromptHistory.ts
@@ -171,7 +192,7 @@ index e0a1241784..cb586e792d 100644
            {...setting("update-track")}
            description={gt("Switches the hosted app release channel.")}
 diff --git a/apps/web/src/components/sidebar/SidebarThreadRow.tsx b/apps/web/src/components/sidebar/SidebarThreadRow.tsx
-index 3e1695e63f..5b320e1ef1 100644
+index 3e1695e63f..67b6e9ed8f 100644
 --- a/apps/web/src/components/sidebar/SidebarThreadRow.tsx
 +++ b/apps/web/src/components/sidebar/SidebarThreadRow.tsx
 @@ -47,6 +47,7 @@ import {
@@ -182,20 +203,10 @@ index 3e1695e63f..5b320e1ef1 100644
    GitBranchIcon,
    MessageCircleQuestionIcon,
    PinIcon,
-@@ -208,6 +209,9 @@ function SidebarProviderStack(props: {
-   thread: SidebarThreadSummary;
-   providerEntryByInstanceId: ReadonlyMap<string, SidebarProviderEntry>;
- }) {
-+  // Keep this render out of the compiler for Safari 15.6 compatibility.
-+  "use no memo";
-+
-   const stack = resolveThreadProviderStack(props.thread);
-   const currentInstanceId = stack[stack.length - 1]!;
-   const currentEntry = props.providerEntryByInstanceId.get(currentInstanceId) ?? null;
-@@ -897,6 +901,24 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
-     event.preventDefault();
-     onContextMenu(threadRef, { x: event.clientX, y: event.clientY }, contextMenuSourceOf(event));
-   };
+@@ -1030,6 +1031,24 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
+       "bg-sidebar bg-linear-to-b from-sidebar-row-active to-sidebar-row-active text-sidebar-foreground opacity-100 shadow-lg",
+   );
+   const sortable = props.sortable;
 +  const touchActionsButton =
 +    sortable?.isDragging || props.sweepAction !== null ? null : (
 +      <button
@@ -214,10 +225,10 @@ index 3e1695e63f..5b320e1ef1 100644
 +        <EllipsisIcon aria-hidden className="size-4" />
 +      </button>
 +    );
-   const handleKeyDown = (event: ReactKeyboardEvent) => {
-     if (event.target !== event.currentTarget) return;
-     if (
-@@ -1387,6 +1409,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
+   const sortableRootProps = sortable
+     ? {
+         ref: sortable.setNodeRef,
+@@ -1387,6 +1406,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                {pinIndicator}
                {multiline ? null : terminalStatusIcon}
                {multiline ? null : issueBadge}
@@ -225,7 +236,7 @@ index 3e1695e63f..5b320e1ef1 100644
                {isRegeneratingTitle ? (
                  <span role="status" className="sr-only">
                    <T>Regenerating title</T>
-@@ -1588,6 +1611,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
+@@ -1588,6 +1608,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                ) : (
                  <span className="flex-1" />
                )}
@@ -267,6 +278,104 @@ index a0f4340c32..d387c4ffec 100644
      let bodyEnd = token.length;
      while (bodyEnd > 0 && ".:?".includes(token[bodyEnd - 1]!)) bodyEnd -= 1;
      if (EMPHASIS_ALTERNATIVES.test(token.slice(0, bodyEnd))) continue;
+diff --git a/apps/web/src/contextMenuFallback.test.ts b/apps/web/src/contextMenuFallback.test.ts
+index b896541a35..9852d327eb 100644
+--- a/apps/web/src/contextMenuFallback.test.ts
++++ b/apps/web/src/contextMenuFallback.test.ts
+@@ -177,6 +177,10 @@ class FakeDocument {
+   querySelectorAll(tagName: string) {
+     return this.body.querySelectorAll(tagName);
+   }
++
++  querySelector() {
++    return null;
++  }
+ }
+ 
+ function findButton(label: string): FakeElement | undefined {
+diff --git a/apps/web/src/contextMenuFallback.ts b/apps/web/src/contextMenuFallback.ts
+index f4abe911aa..875e8aa8bb 100644
+--- a/apps/web/src/contextMenuFallback.ts
++++ b/apps/web/src/contextMenuFallback.ts
+@@ -199,7 +199,12 @@ function createIconElement(name: string, tone: "neutral" | "destructive"): SVGSV
+   return svg;
+ }
+ 
+-function clampMenuPosition(menu: HTMLDivElement, preferredLeft: number, preferredTop: number) {
++function clampMenuPosition(
++  menu: HTMLDivElement,
++  preferredLeft: number,
++  preferredTop: number,
++  container?: HTMLElement,
++) {
+   const rect = menu.getBoundingClientRect();
+   const left = Math.min(
+     Math.max(4, preferredLeft),
+@@ -209,8 +214,9 @@ function clampMenuPosition(menu: HTMLDivElement, preferredLeft: number, preferre
+     Math.max(4, preferredTop),
+     Math.max(4, window.innerHeight - rect.height - 4),
+   );
+-  menu.style.left = `${left}px`;
+-  menu.style.top = `${top}px`;
++  const origin = container?.getBoundingClientRect();
++  menu.style.left = `${left - (origin?.left ?? 0) - (container?.clientLeft ?? 0)}px`;
++  menu.style.top = `${top - (origin?.top ?? 0) - (container?.clientTop ?? 0)}px`;
+ }
+ 
+ function isNodeWithinMenuStack(target: EventTarget | null, menuStack: readonly HTMLDivElement[]) {
+@@ -253,6 +259,10 @@ export function showContextMenuFallback<T extends string>(
+       focusedElement = focusedElement.shadowRoot.activeElement;
+     }
+     const previouslyFocusedElement = focusedElement instanceof HTMLElement ? focusedElement : null;
++    // The mobile sidebar traps focus. A menu attached to body competes with the drawer.
++    const sidebar = document.querySelector<HTMLElement>(
++      '[data-sidebar="sidebar"][data-mobile="true"][data-open]',
++    );
+     const menuStack: HTMLDivElement[] = [];
+     const submenuTriggerStack: Array<HTMLButtonElement | undefined> = [];
+     let isDisposed = false;
+@@ -395,6 +405,11 @@ export function showContextMenuFallback<T extends string>(
+         "position:fixed;z-index:10000;min-width:8rem;max-width:24rem;overflow:hidden;border-radius:var(--radius-lg);background-clip:padding-box;color:var(--contrast-popover-foreground);outline:none;pointer-events:auto;";
+       menu.style.left = `${preferredLeft}px`;
+       menu.style.top = `${preferredTop}px`;
++      if (sidebar) {
++        menu.style.position = "absolute";
++        menu.style.width = "max-content";
++        menu.style.maxWidth = "min(24rem, calc(100vw - 0.5rem))";
++      }
+       menu.dataset.level = String(level);
+       menu.dataset.contextMenu = "true";
+       menu.setAttribute("role", "menu");
+@@ -593,13 +608,13 @@ export function showContextMenuFallback<T extends string>(
+       menu.addEventListener("mousedown", swallowThumbButton);
+       menu.addEventListener("mouseup", swallowThumbButton);
+ 
+-      document.body.appendChild(menu);
++      (sidebar ?? document.body).appendChild(menu);
+       menuStack[level] = menu;
+       submenuTriggerStack[level] = parentTrigger;
+ 
+       requestAnimationFrame(() => {
+         if (!parentTrigger) {
+-          clampMenuPosition(menu, preferredLeft, preferredTop);
++          clampMenuPosition(menu, preferredLeft, preferredTop, sidebar ?? undefined);
+           return;
+         }
+         // A fixed menu near the right edge shrinks to the space left; measure its real width.
+@@ -609,7 +624,12 @@ export function showContextMenuFallback<T extends string>(
+         const roomLeft = parentTrigger.getBoundingClientRect().left - 4;
+         const roomRight = window.innerWidth - preferredLeft;
+         const flipLeft = width > roomRight && roomLeft > roomRight;
+-        clampMenuPosition(menu, flipLeft ? roomLeft - width : preferredLeft, preferredTop);
++        clampMenuPosition(
++          menu,
++          flipLeft ? roomLeft - width : preferredLeft,
++          preferredTop,
++          sidebar ?? undefined,
++        );
+       });
+     };
+ 
 diff --git a/apps/web/src/environments/primary/auth.ts b/apps/web/src/environments/primary/auth.ts
 index 8e57580670..223f06c162 100644
 --- a/apps/web/src/environments/primary/auth.ts
@@ -339,10 +448,10 @@ index 6a0998e6b3..a11e42e85d 100644
  
    const label = input.label?.trim();
 diff --git a/apps/web/src/index.css b/apps/web/src/index.css
-index 05541d3970..97fcc4ae01 100644
+index 05541d3970..28430732f9 100644
 --- a/apps/web/src/index.css
 +++ b/apps/web/src/index.css
-@@ -2649,3 +2649,25 @@ code {
+@@ -2649,3 +2649,29 @@ code {
  .messages-timeline-scroll:focus-visible {
    outline: none;
  }
@@ -362,6 +471,10 @@ index 05541d3970..97fcc4ae01 100644
 +  display: none;
 +  width: 2rem;
 +  height: 2rem;
++  touch-action: manipulation;
++}
++.sidebar-touch-actions > svg {
++  pointer-events: none;
 +}
 +@media (any-pointer: coarse), (max-width: 767px) {
 +  .sidebar-touch-actions {
@@ -641,12 +754,14 @@ index 0000000000..983c4e5543
 +}
 diff --git a/apps/web/src/lib/legacyRegex.test.ts b/apps/web/src/lib/legacyRegex.test.ts
 new file mode 100644
-index 0000000000..a6dc27230f
+index 0000000000..af78d246e9
 --- /dev/null
 +++ b/apps/web/src/lib/legacyRegex.test.ts
-@@ -0,0 +1,28 @@
+@@ -0,0 +1,30 @@
++// @effect-diagnostics-next-line nodeBuiltinImport:off -- reads the installed dependency as a build input.
 +import * as NodeFS from "node:fs";
 +import * as NodeModule from "node:module";
++// @effect-diagnostics-next-line nodeBuiltinImport:off -- resolves the installed dependency path.
 +import * as NodePath from "node:path";
 +import { expect, it } from "vite-plus/test";
 +import { legacyRegexSource } from "../../vite/legacyRegex";

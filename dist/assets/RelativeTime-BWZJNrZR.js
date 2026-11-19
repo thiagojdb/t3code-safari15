@@ -1,1 +1,0 @@
-import{t as e}from"./useRelativeTimeState-BvTWXwMU.js";function t(t){let n=e(t.timestamp);return n.status===`relative`?n.label:null}export{t};

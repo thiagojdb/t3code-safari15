@@ -1,0 +1,1 @@
+import{n as e}from"./SettingsPanels-Ca0D7Vq3.js";var t=e;export{t as component};
